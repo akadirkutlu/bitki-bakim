@@ -1,0 +1,60 @@
+import type { PlantType } from "./types";
+
+export const PLANT_TYPES: PlantType[] = [
+  {
+    id: "monstera-deliciosa",
+    latinName: "Monstera deliciosa",
+    turkishNames: ["Devetabanı"],
+    defaultWateringDays: 7,
+    defaultFeedingDays: 30,
+    defaultSoilChangeDays: 365,
+  },
+  {
+    id: "ficus-elastica",
+    latinName: "Ficus elastica",
+    turkishNames: ["Kauçuk"],
+    defaultWateringDays: 8,
+    defaultFeedingDays: 35,
+    defaultSoilChangeDays: 365,
+  },
+  {
+    id: "spathiphyllum",
+    latinName: "Spathiphyllum wallisii",
+    turkishNames: ["Barış Çiçeği"],
+    defaultWateringDays: 5,
+    defaultFeedingDays: 25,
+    defaultSoilChangeDays: 300,
+  },
+  {
+    id: "epipremnum-aureum",
+    latinName: "Epipremnum aureum",
+    turkishNames: ["Salon Sarmaşığı", "Pothos"],
+    defaultWateringDays: 6,
+    defaultFeedingDays: 30,
+    defaultSoilChangeDays: 300,
+  },
+  {
+    id: "sansevieria-trifasciata",
+    latinName: "Dracaena trifasciata",
+    turkishNames: ["Paşa Kılıcı"],
+    defaultWateringDays: 14,
+    defaultFeedingDays: 45,
+    defaultSoilChangeDays: 420,
+  },
+  {
+    id: "aloe-vera",
+    latinName: "Aloe vera",
+    turkishNames: ["Aloe Vera"],
+    defaultWateringDays: 14,
+    defaultFeedingDays: 50,
+    defaultSoilChangeDays: 420,
+  },
+  {
+    id: "crassula-ovata",
+    latinName: "Crassula ovata",
+    turkishNames: ["Para Ağacı"],
+    defaultWateringDays: 12,
+    defaultFeedingDays: 45,
+    defaultSoilChangeDays: 365,
+  },
+];
