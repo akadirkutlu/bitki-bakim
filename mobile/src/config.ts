@@ -51,5 +51,9 @@ function getApiHost(): string {
   return "localhost";
 }
 
+const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+
 export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL ?? `http://${getApiHost()}:${API_PORT}`;
+  configuredUrl && configuredUrl.length > 0
+    ? configuredUrl
+    : `http://${getApiHost()}:${API_PORT}`;

@@ -1,18 +1,32 @@
 export type PlanType = "free" | "premium";
 
+export type AuthProvider = "email" | "google" | "apple";
+
 export type User = {
   id: string;
   email: string;
-  passwordHash: string;
   name: string;
   plan: PlanType;
   createdAt: string;
+  authProvider: AuthProvider;
+  passwordHash?: string;
+  googleId?: string;
+  appleId?: string;
+};
+
+export type PublicUser = {
+  id: string;
+  email: string;
+  name: string;
+  plan: PlanType;
+  authProvider: AuthProvider;
 };
 
 export type PlantType = {
   id: string;
   latinName: string;
   turkishNames: string[];
+  englishNames: string[];
   defaultWateringDays: number;
   defaultFeedingDays: number;
   defaultSoilChangeDays: number;
@@ -28,6 +42,7 @@ export type Plant = {
   lastSoilChangeDate: string;
   createdAt: string;
   imageHint?: string;
+  photoUri?: string;
 };
 
 export type DatabaseShape = {

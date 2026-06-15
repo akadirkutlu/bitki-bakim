@@ -37,10 +37,17 @@ For iOS simulator API calls, app uses `http://localhost:4000`.
 
 ## Current AI Identification
 
-Photo flow currently sends image URI text as hint to backend (`/plants/identify`).
-It returns narrowed candidate plant types using heuristic scoring.
+Photo identification uses the free [Pl@ntNet API](https://my.plantnet.org/) when `PLANTNET_API_KEY` is set in `backend/.env` (500 identifications/day on the free tier).
 
-Next step: replace with a real vision model integration and/or curated plant image embedding search.
+1. Create an account at [my.plantnet.org](https://my.plantnet.org/)
+2. Generate an API key under Settings
+3. Add `PLANTNET_API_KEY=...` to `backend/.env` and restart the backend
+
+The mobile app sends the photo as base64; the backend maps Pl@ntNet results to supported plant types via heuristic scoring.
+
+Free-tier use requires Pl@ntNet attribution — see their [terms of use](https://my.plantnet.org/terms_of_use).
+
+Without `PLANTNET_API_KEY`, photo identification is unavailable and the app falls back to manual search.
 
 ## Monetization Hook
 

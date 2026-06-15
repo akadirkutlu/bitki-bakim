@@ -1,25 +1,73 @@
 {
   "expo": {
-    "name": "Bitki Bakim",
+    "name": "Bitki Bakım",
     "slug": "bitki-bakim",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF6EF"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bitkibakim.app",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.bitkibakim.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FAF6EF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "scheme": "bitki-bakim",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      "./plugins/withIosModularHeaders.js",
+      "expo-asset",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Bitki türünü tanımak için kamera erişimi gerekiyor.",
+          "photosPermission": "Bitki fotoğrafı seçmek için galeri erişimi gerekiyor."
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.727727862739-41r4kkch5pvh0vg8i9lkj9mrij90bfqv"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "3fa69352-ad7d-4656-b84f-df5e66751a1b"
+      }
+    },
+    "owner": "akadirkutlu"
   }
 }

@@ -1,6 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { login as apiLogin, register as apiRegister } from "../services/api";
+import {
+  login as apiLogin,
+  loginWithApple as apiLoginWithApple,
+  loginWithGoogle as apiLoginWithGoogle,
+  register as apiRegister,
+} from "../services/api";
 import type { User } from "../types";
 
 const TOKEN_KEY = "auth_token";
@@ -15,6 +20,14 @@ type AuthContextValue = {
     name: string;
     email: string;
     password: string;
+  }) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
+  loginWithApple: (payload: {
+    identityToken: string;
+    fullName?: {
+      givenName?: string;
+      familyName?: string;
+    };
   }) => Promise<void>;
   logout: () => Promise<void>;
 };
@@ -53,6 +66,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async (payload) => {
         const response = await apiRegister(payload);
+        setToken(response.token);
+        setUser(response.user);
+        await AsyncStorage.setItem(TOKEN_KEY, response.token);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      },
+      loginWithGoogle: async (idToken) => {
+        const response = await apiLoginWithGoogle(idToken);
+        setToken(response.token);
+        setUser(response.user);
+        await AsyncStorage.setItem(TOKEN_KEY, response.token);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      },
+      loginWithApple: async (payload) => {
+        const response = await apiLoginWithApple(payload);
         setToken(response.token);
         setUser(response.user);
         await AsyncStorage.setItem(TOKEN_KEY, response.token);

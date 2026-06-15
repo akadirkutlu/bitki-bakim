@@ -11,8 +11,13 @@ Notifications.setNotificationHandler({
 });
 
 function nextDateWithInterval(lastDate: string, intervalDays: number): Date {
-  const date = new Date(lastDate);
-  date.setDate(date.getDate() + intervalDays);
+  const now = new Date();
+  const date = new Date(`${lastDate}T09:00:00`);
+
+  do {
+    date.setDate(date.getDate() + intervalDays);
+  } while (date.getTime() <= now.getTime());
+
   return date;
 }
 

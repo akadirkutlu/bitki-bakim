@@ -8,7 +8,10 @@ import { buildCalendarEvents } from "./calendar";
 import { readDb, writeDb } from "./db";
 import { identifyPlantCandidates } from "./identify";
 import { PLANT_TYPES } from "./plantTypes";
+import { identifyPlantHintFromImage, isPlantVisionConfigured } from "./plantVision";
+import { verifyAppleIdentityToken, verifyGoogleIdToken } from "./socialAuth";
 import type { Plant } from "./types";
+import { socialProviderLabel, toPublicUser, upsertSocialUser } from "./userAuth";
 
 dotenv.config();
 
@@ -16,7 +19,7 @@ const app = express();
 const PORT = Number(process.env.PORT ?? 4000);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
@@ -48,8 +51,20 @@ app.post("/auth/register", async (req, res) => {
   const { email, password, name } = parseResult.data;
   const db = await readDb();
 
-  const hasUser = db.users.some((user) => user.email === email);
-  if (hasUser) {
+  const existingUser = db.users.find(
+    (item) => item.email.trim().toLowerCase() === email.trim().toLowerCase()
+  );
+
+  if (existingUser) {
+    if (existingUser.authProvider !== "email") {
+      res.status(409).json({
+        message: `Account already exists. Sign in with ${socialProviderLabel(existingUser.authProvider)}.`,
+        code: "USE_SOCIAL_LOGIN",
+        provider: existingUser.authProvider,
+      });
+      return;
+    }
+
     res.status(409).json({ message: "User already exists" });
     return;
   }
@@ -61,6 +76,7 @@ app.post("/auth/register", async (req, res) => {
     passwordHash,
     name,
     plan: "free" as const,
+    authProvider: "email" as const,
     createdAt: new Date().toISOString(),
   };
 
@@ -69,7 +85,7 @@ app.post("/auth/register", async (req, res) => {
 
   res.status(201).json({
     token: signToken(user.id),
-    user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+    user: toPublicUser(user),
   });
 });
 
@@ -95,6 +111,15 @@ app.post("/auth/login", async (req, res) => {
     return;
   }
 
+  if (!user.passwordHash) {
+    res.status(401).json({
+      message: `This account uses ${socialProviderLabel(user.authProvider)} sign-in.`,
+      code: "USE_SOCIAL_LOGIN",
+      provider: user.authProvider,
+    });
+    return;
+  }
+
   const isMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (!isMatch) {
@@ -104,8 +129,90 @@ app.post("/auth/login", async (req, res) => {
 
   res.json({
     token: signToken(user.id),
-    user: { id: user.id, email: user.email, name: user.name, plan: user.plan },
+    user: toPublicUser(user),
   });
+});
+
+const googleAuthSchema = z.object({
+  idToken: z.string().min(1),
+});
+
+app.post("/auth/google", async (req, res) => {
+  const parseResult = googleAuthSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    validationErrorResponse(res, parseResult.error);
+    return;
+  }
+
+  try {
+    const profile = await verifyGoogleIdToken(parseResult.data.idToken);
+    const db = await readDb();
+    const user = upsertSocialUser(db.users, {
+      provider: "google",
+      providerId: profile.googleId,
+      email: profile.email,
+      name: profile.name,
+    });
+
+    await writeDb(db);
+
+    res.json({
+      token: signToken(user.id),
+      user: toPublicUser(user),
+    });
+  } catch (error) {
+    res.status(401).json({
+      message: error instanceof Error ? error.message : "Google sign-in failed",
+    });
+  }
+});
+
+const appleAuthSchema = z.object({
+  identityToken: z.string().min(1),
+  fullName: z
+    .object({
+      givenName: z.string().optional(),
+      familyName: z.string().optional(),
+    })
+    .optional(),
+});
+
+app.post("/auth/apple", async (req, res) => {
+  const parseResult = appleAuthSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    validationErrorResponse(res, parseResult.error);
+    return;
+  }
+
+  try {
+    const profile = await verifyAppleIdentityToken(parseResult.data.identityToken);
+    const fullName = parseResult.data.fullName;
+    const composedName = [fullName?.givenName, fullName?.familyName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const db = await readDb();
+    const user = upsertSocialUser(db.users, {
+      provider: "apple",
+      providerId: profile.appleId,
+      email: profile.email,
+      name: composedName || profile.name,
+    });
+
+    await writeDb(db);
+
+    res.json({
+      token: signToken(user.id),
+      user: toPublicUser(user),
+    });
+  } catch (error) {
+    res.status(401).json({
+      message: error instanceof Error ? error.message : "Apple sign-in failed",
+    });
+  }
 });
 
 app.get("/plant-types", authMiddleware, (_req, res) => {
@@ -126,6 +233,7 @@ const createPlantSchema = z.object({
   lastFeedingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   lastSoilChangeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   imageHint: z.string().optional(),
+  photoUri: z.string().optional(),
 });
 
 app.post("/plants", authMiddleware, async (req, res) => {
@@ -164,11 +272,22 @@ app.post("/plants", authMiddleware, async (req, res) => {
     return;
   }
 
+  const nickname = parseResult.data.nickname.trim();
+  const nicknameTaken = userPlants.some(
+    (item) => item.nickname.trim().toLocaleLowerCase("tr") === nickname.toLocaleLowerCase("tr")
+  );
+
+  if (nicknameTaken) {
+    res.status(409).json({ message: "Plant nickname already exists" });
+    return;
+  }
+
   const plant: Plant = {
     id: crypto.randomUUID(),
     userId,
     createdAt: new Date().toISOString(),
     ...parseResult.data,
+    nickname,
   };
 
   db.plants.push(plant);
@@ -209,10 +328,33 @@ app.patch("/plants/:id", authMiddleware, async (req, res) => {
   res.json({ plant });
 });
 
-app.post("/plants/identify", authMiddleware, (req, res) => {
-  const schema = z.object({
-    imageHint: z.string().min(1),
-  });
+app.delete("/plants/:id", authMiddleware, async (req, res) => {
+  const userId = (req as AuthenticatedRequest).userId;
+  const db = await readDb();
+  const plantIndex = db.plants.findIndex(
+    (item) => item.id === req.params.id && item.userId === userId
+  );
+
+  if (plantIndex === -1) {
+    res.status(404).json({ message: "Plant not found" });
+    return;
+  }
+
+  db.plants.splice(plantIndex, 1);
+  await writeDb(db);
+
+  res.status(204).send();
+});
+
+app.post("/plants/identify", authMiddleware, async (req, res) => {
+  const schema = z
+    .object({
+      imageBase64: z.string().min(1).optional(),
+      imageHint: z.string().min(1).optional(),
+    })
+    .refine((data) => Boolean(data.imageBase64 || data.imageHint), {
+      message: "imageBase64 or imageHint is required",
+    });
 
   const parseResult = schema.safeParse(req.body);
   if (!parseResult.success) {
@@ -220,7 +362,27 @@ app.post("/plants/identify", authMiddleware, (req, res) => {
     return;
   }
 
-  const candidates = identifyPlantCandidates(parseResult.data.imageHint);
+  let hint = parseResult.data.imageHint ?? "";
+
+  if (parseResult.data.imageBase64) {
+    if (!isPlantVisionConfigured()) {
+      res.status(503).json({
+        message: "Photo identification is not configured on the server",
+      });
+      return;
+    }
+
+    try {
+      hint = await identifyPlantHintFromImage(parseResult.data.imageBase64);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Plant vision identification failed:", error);
+      res.status(502).json({ message: "Could not identify plant from photo" });
+      return;
+    }
+  }
+
+  const candidates = identifyPlantCandidates(hint);
   res.json({ candidates });
 });
 

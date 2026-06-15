@@ -4,6 +4,7 @@ import type { CalendarEvent, Plant, PlantType, User } from "../types";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 15000,
 });
 
 export type AuthResponse = {
@@ -25,6 +26,22 @@ export async function login(payload: {
   password: string;
 }): Promise<AuthResponse> {
   const { data } = await client.post<AuthResponse>("/auth/login", payload);
+  return data;
+}
+
+export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>("/auth/google", { idToken });
+  return data;
+}
+
+export async function loginWithApple(payload: {
+  identityToken: string;
+  fullName?: {
+    givenName?: string;
+    familyName?: string;
+  };
+}): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>("/auth/apple", payload);
   return data;
 }
 
@@ -56,6 +73,12 @@ export async function createPlant(
   return data.plant;
 }
 
+export async function deletePlant(token: string, plantId: string): Promise<void> {
+  await client.delete(`/plants/${plantId}`, {
+    headers: authHeaders(token),
+  });
+}
+
 export async function getCalendar(token: string): Promise<CalendarEvent[]> {
   const { data } = await client.get<{ events: CalendarEvent[] }>("/calendar", {
     headers: authHeaders(token),
@@ -65,22 +88,31 @@ export async function getCalendar(token: string): Promise<CalendarEvent[]> {
 
 export async function identifyByPhoto(
   token: string,
-  imageHint: string
+  payload: { imageBase64?: string; imageHint?: string },
+  signal?: AbortSignal
 ): Promise<PlantType[]> {
   const { data } = await client.post<{ candidates: PlantType[] }>(
     "/plants/identify",
-    { imageHint },
-    { headers: authHeaders(token) }
+    payload,
+    { headers: authHeaders(token), signal, timeout: 45000 }
   );
   return data.candidates;
 }
 
-export function extractApiMessage(error: unknown): string {
+export function isCanceledError(error: unknown): boolean {
+  return axios.isCancel(error);
+}
+
+export function extractApiMessage(
+  error: unknown,
+  fallback = "Unexpected error"
+): string {
   if (axios.isAxiosError(error)) {
     return (
       (error.response?.data as { message?: string } | undefined)?.message ??
-      error.message
+      error.message ??
+      fallback
     );
   }
-  return "Unexpected error";
+  return fallback;
 }

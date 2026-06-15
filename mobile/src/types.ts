@@ -3,12 +3,14 @@ export type User = {
   email: string;
   name: string;
   plan: "free" | "premium";
+  authProvider?: "email" | "google" | "apple";
 };
 
 export type PlantType = {
   id: string;
   latinName: string;
   turkishNames: string[];
+  englishNames: string[];
   defaultWateringDays: number;
   defaultFeedingDays: number;
   defaultSoilChangeDays: number;
@@ -24,6 +26,7 @@ export type Plant = {
   lastSoilChangeDate: string;
   createdAt: string;
   imageHint?: string;
+  photoUri?: string;
 };
 
 export type CalendarEvent = {
