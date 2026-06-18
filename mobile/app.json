@@ -61,6 +61,13 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.727727862739-41r4kkch5pvh0vg8i9lkj9mrij90bfqv"
         }
+      ],
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#4C9A5C"
+        }
       ]
     ],
     "extra": {

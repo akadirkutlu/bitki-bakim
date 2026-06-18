@@ -1,10 +1,10 @@
 import axios from "axios";
 import { API_BASE_URL } from "../config";
-import type { CalendarEvent, Plant, PlantType, User } from "../types";
+import type { CalendarEvent, Plant, PlantType, UpdatePlantPayload, User } from "../types";
 
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: 25000,
 });
 
 export type AuthResponse = {
@@ -68,6 +68,17 @@ export async function createPlant(
   payload: Omit<Plant, "id" | "userId" | "createdAt">
 ): Promise<Plant> {
   const { data } = await client.post<{ plant: Plant }>("/plants", payload, {
+    headers: authHeaders(token),
+  });
+  return data.plant;
+}
+
+export async function updatePlant(
+  token: string,
+  plantId: string,
+  payload: UpdatePlantPayload
+): Promise<Plant> {
+  const { data } = await client.patch<{ plant: Plant }>(`/plants/${plantId}`, payload, {
     headers: authHeaders(token),
   });
   return data.plant;

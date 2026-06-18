@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -8,12 +9,16 @@ import {
   Text,
   View,
 } from "react-native";
+import { DateCalendarPicker } from "../components/DateCalendarPicker";
 import { PlantImage, UserPhotoImage } from "../components/PlantImage";
+import { useAuth } from "../context/AuthContext";
 import { useI18n } from "../localization/I18nContext";
 import { getPlantImage } from "../plantImages";
+import { extractApiMessage, updatePlant } from "../services/api";
 import { colors, radii, shadow, spacing, typography } from "../theme";
-import type { CalendarEvent, Plant, PlantType } from "../types";
-import { daysSince, formatDayLabel } from "../utils/dates";
+import type { CalendarEvent, CareEventType, Plant, PlantType, UpdatePlantPayload } from "../types";
+import { showErrorAlert } from "../utils/alerts";
+import { daysSince, formatDayLabel, toLocalIsoDay } from "../utils/dates";
 import { formatPlantCommonNames } from "../utils/plantNames";
 
 type Props = {
@@ -23,13 +28,13 @@ type Props = {
   visible: boolean;
   onClose: () => void;
   onDelete?: () => void;
+  onCareLogged?: () => void;
+  initialCareKey?: CareEventType | null;
   deleting?: boolean;
 };
 
-type CareKey = "watering" | "feeding" | "soil_change";
-
 const CARE_CONFIG: Record<
-  CareKey,
+  CareEventType,
   {
     icon: keyof typeof Ionicons.glyphMap;
     color: string;
@@ -39,9 +44,15 @@ const CARE_CONFIG: Record<
       PlantType,
       "defaultWateringDays" | "defaultFeedingDays" | "defaultSoilChangeDays"
     >;
+    updateKey: keyof Pick<
+      UpdatePlantPayload,
+      "lastWateringDate" | "lastFeedingDate" | "lastSoilChangeDate"
+    >;
     labelKey: string;
     lastLabelKey: string;
     intervalLabelKey: string;
+    logActionKey: string;
+    logPromptKey: string;
   }
 > = {
   watering: {
@@ -50,9 +61,12 @@ const CARE_CONFIG: Record<
     background: colors.waterLight,
     lastDateKey: "lastWateringDate",
     intervalKey: "defaultWateringDays",
+    updateKey: "lastWateringDate",
     labelKey: "eventWatering",
     lastLabelKey: "lastWateringDate",
     intervalLabelKey: "careIntervalWatering",
+    logActionKey: "logWatering",
+    logPromptKey: "logWateringPrompt",
   },
   feeding: {
     icon: "leaf",
@@ -60,9 +74,12 @@ const CARE_CONFIG: Record<
     background: colors.leafPale,
     lastDateKey: "lastFeedingDate",
     intervalKey: "defaultFeedingDays",
+    updateKey: "lastFeedingDate",
     labelKey: "eventFeeding",
     lastLabelKey: "lastFeedingDate",
     intervalLabelKey: "careIntervalFeeding",
+    logActionKey: "logFeeding",
+    logPromptKey: "logFeedingPrompt",
   },
   soil_change: {
     icon: "flower",
@@ -70,13 +87,16 @@ const CARE_CONFIG: Record<
     background: colors.soilLight,
     lastDateKey: "lastSoilChangeDate",
     intervalKey: "defaultSoilChangeDays",
+    updateKey: "lastSoilChangeDate",
     labelKey: "eventSoilChange",
     lastLabelKey: "lastSoilChangeDate",
     intervalLabelKey: "careIntervalSoilChange",
+    logActionKey: "logSoilChange",
+    logPromptKey: "logSoilChangePrompt",
   },
 };
 
-const CARE_ORDER: CareKey[] = ["watering", "feeding", "soil_change"];
+const CARE_ORDER: CareEventType[] = ["watering", "feeding", "soil_change"];
 
 export function PlantDetailScreen({
   plant,
@@ -85,9 +105,24 @@ export function PlantDetailScreen({
   visible,
   onClose,
   onDelete,
+  onCareLogged,
+  initialCareKey = null,
   deleting = false,
 }: Props) {
   const { t, language } = useI18n();
+  const { token } = useAuth();
+  const [careModalKey, setCareModalKey] = useState<CareEventType | null>(null);
+  const [careDate, setCareDate] = useState(toLocalIsoDay());
+  const [savingCare, setSavingCare] = useState(false);
+
+  useEffect(() => {
+    if (!visible || !initialCareKey) {
+      return;
+    }
+
+    setCareModalKey(initialCareKey);
+    setCareDate(toLocalIsoDay());
+  }, [visible, initialCareKey, plant.id]);
 
   const upcomingEvents = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -97,8 +132,48 @@ export function PlantDetailScreen({
       .slice(0, 6);
   }, [events, plant.id]);
 
+  function openCareModal(careKey: CareEventType) {
+    setCareModalKey(careKey);
+    setCareDate(toLocalIsoDay());
+  }
+
+  function closeCareModal() {
+    if (savingCare) {
+      return;
+    }
+    setCareModalKey(null);
+  }
+
+  async function onConfirmCare() {
+    if (!token || !careModalKey) {
+      return;
+    }
+
+    const config = CARE_CONFIG[careModalKey];
+    setSavingCare(true);
+    try {
+      await updatePlant(token, plant.id, {
+        [config.updateKey]: careDate,
+      });
+      setCareModalKey(null);
+      onCareLogged?.();
+    } catch (error) {
+      showErrorAlert(t, extractApiMessage(error, t("unexpectedError")));
+    } finally {
+      setSavingCare(false);
+    }
+  }
+
+  const activeCareConfig = careModalKey ? CARE_CONFIG[careModalKey] : null;
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+      allowSwipeDismissal
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={onClose} style={styles.headerButton} hitSlop={8}>
@@ -135,6 +210,29 @@ export function PlantDetailScreen({
                 <Text style={styles.latinName}>{plantType.latinName}</Text>
               </>
             ) : null}
+          </View>
+
+          <Text style={styles.sectionTitle}>{t("logCare")}</Text>
+          <View style={styles.logList}>
+            {CARE_ORDER.map((careKey) => {
+              const config = CARE_CONFIG[careKey];
+              return (
+                <Pressable
+                  key={careKey}
+                  style={({ pressed }) => [
+                    styles.logRow,
+                    pressed ? styles.logRowPressed : null,
+                  ]}
+                  onPress={() => openCareModal(careKey)}
+                >
+                  <View style={[styles.logIcon, { backgroundColor: config.background }]}>
+                    <Ionicons name={config.icon} size={18} color={config.color} />
+                  </View>
+                  <Text style={styles.logLabel}>{t(config.logActionKey)}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </Pressable>
+              );
+            })}
           </View>
 
           <Text style={styles.sectionTitle}>{t("lastCare")}</Text>
@@ -193,9 +291,13 @@ export function PlantDetailScreen({
               {upcomingEvents.map((event, index) => {
                 const config = CARE_CONFIG[event.eventType];
                 return (
-                  <View
+                  <Pressable
                     key={`${event.eventType}-${event.date}-${index}`}
-                    style={styles.upcomingRow}
+                    style={({ pressed }) => [
+                      styles.upcomingRow,
+                      pressed ? styles.upcomingRowPressed : null,
+                    ]}
+                    onPress={() => openCareModal(event.eventType)}
                   >
                     <View style={[styles.upcomingIcon, { backgroundColor: config.background }]}>
                       <Ionicons name={config.icon} size={16} color={config.color} />
@@ -206,13 +308,73 @@ export function PlantDetailScreen({
                         {formatDayLabel(event.date, language, t)}
                       </Text>
                     </View>
-                  </View>
+                    <Ionicons name="checkmark-circle-outline" size={22} color={config.color} />
+                  </Pressable>
                 );
               })}
             </View>
           )}
         </ScrollView>
       </View>
+
+      <Modal
+        visible={careModalKey !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={closeCareModal}
+      >
+        <View style={styles.careModalBackdrop}>
+          <View style={styles.careModalCard}>
+            {activeCareConfig ? (
+              <>
+                <Text style={styles.careModalTitle}>
+                  {t(activeCareConfig.logPromptKey).replace("{name}", plant.nickname)}
+                </Text>
+                <Pressable
+                  style={[styles.todayButton, { borderColor: activeCareConfig.color }]}
+                  onPress={() => setCareDate(toLocalIsoDay())}
+                >
+                  <Text style={[styles.todayButtonText, { color: activeCareConfig.color }]}>
+                    {t("useToday")}
+                  </Text>
+                </Pressable>
+                <DateCalendarPicker
+                  value={careDate}
+                  onChange={setCareDate}
+                  accentColor={activeCareConfig.color}
+                  label={t("careDoneDate")}
+                />
+                <View style={styles.careModalActions}>
+                  <Pressable
+                    style={styles.careModalCancel}
+                    onPress={closeCareModal}
+                    disabled={savingCare}
+                  >
+                    <Text style={styles.careModalCancelText}>{t("cancel")}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.careModalConfirm,
+                      { backgroundColor: activeCareConfig.color },
+                      savingCare ? styles.careModalConfirmDisabled : null,
+                    ]}
+                    onPress={() => {
+                      onConfirmCare().catch(() => undefined);
+                    }}
+                    disabled={savingCare}
+                  >
+                    {savingCare ? (
+                      <ActivityIndicator color={colors.white} />
+                    ) : (
+                      <Text style={styles.careModalConfirmText}>{t("confirmCareDone")}</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </Modal>
   );
 }
@@ -288,6 +450,34 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
+  logList: {
+    gap: spacing.sm,
+  },
+  logRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+    backgroundColor: colors.white,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    ...shadow.card,
+  },
+  logRowPressed: {
+    opacity: 0.85,
+  },
+  logIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.pill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logLabel: {
+    flex: 1,
+    fontSize: typography.body,
+    fontWeight: "700",
+    color: colors.textDark,
+  },
   careGrid: {
     flexDirection: "row",
     gap: spacing.sm,
@@ -361,6 +551,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     ...shadow.card,
   },
+  upcomingRowPressed: {
+    opacity: 0.85,
+  },
   upcomingIcon: {
     width: 32,
     height: 32,
@@ -384,5 +577,73 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     color: colors.textMuted,
     fontStyle: "italic",
+  },
+  careModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  careModalCard: {
+    backgroundColor: colors.cream,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    gap: spacing.md,
+    ...shadow.card,
+  },
+  careModalTitle: {
+    fontSize: typography.heading,
+    fontWeight: "800",
+    color: colors.textDark,
+  },
+  todayButton: {
+    alignSelf: "flex-start",
+    borderWidth: 1.5,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+  },
+  todayButtonText: {
+    fontSize: typography.small,
+    fontWeight: "700",
+  },
+  careModalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  careModalCancel: {
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.white,
+    minWidth: 96,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  careModalCancelText: {
+    fontSize: typography.body,
+    fontWeight: "700",
+    color: colors.textDark,
+  },
+  careModalConfirm: {
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    minWidth: 120,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  careModalConfirmDisabled: {
+    opacity: 0.7,
+  },
+  careModalConfirmText: {
+    fontSize: typography.body,
+    fontWeight: "700",
+    color: colors.white,
   },
 });

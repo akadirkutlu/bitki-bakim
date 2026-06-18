@@ -22,7 +22,6 @@ import {
   identifyByPhoto,
   isCanceledError,
 } from "../services/api";
-import { schedulePlantReminders } from "../services/notifications";
 import { colors, radii, shadow, spacing, typography } from "../theme";
 import type { Plant, PlantType } from "../types";
 import { showErrorAlert, showMessageAlert, showPlanAlert } from "../utils/alerts";
@@ -309,21 +308,6 @@ export function AddPlantScreen({ plantTypes, plants, onCreated }: Props) {
         lastSoilChangeDate: dates.soil,
         photoUri: photoUri ?? undefined,
       });
-
-      const selectedType = plantTypes.find((type) => type.id === selectedTypeId);
-      if (selectedType) {
-        try {
-          await schedulePlantReminders({
-            plantNickname: nickname.trim(),
-            plantType: selectedType,
-            lastWateringDate: dates.watering,
-            lastFeedingDate: dates.feeding,
-            lastSoilChangeDate: dates.soil,
-          });
-        } catch {
-          // Plant is already saved; reminders are best-effort (e.g. Expo Go limits).
-        }
-      }
 
       resetFormState(
         setStep,

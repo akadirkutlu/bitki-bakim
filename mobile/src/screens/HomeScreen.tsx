@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { IllustrationImage } from "../components/PlantImage";
 import { PlantCard } from "../components/PlantCard";
@@ -8,7 +8,7 @@ import { useI18n } from "../localization/I18nContext";
 import { emptyStateImage } from "../plantImages";
 import { deletePlant, extractApiMessage } from "../services/api";
 import { colors, radii, spacing, typography } from "../theme";
-import type { CalendarEvent, Plant, PlantType } from "../types";
+import type { CalendarEvent, CareEventType, Plant, PlantType } from "../types";
 import { showConfirmAlert, showErrorAlert } from "../utils/alerts";
 
 const MAX_FREE_PLANTS = 5;
@@ -18,18 +18,43 @@ type Props = {
   plantTypeMap: Map<string, PlantType>;
   events: CalendarEvent[];
   onPlantDeleted: () => void;
+  onPlantUpdated: () => void;
+  openPlantRequest?: {
+    plantId: string;
+    careKey?: CareEventType;
+  } | null;
+  onOpenPlantRequestHandled?: () => void;
 };
 
-export function HomeScreen({ plants, plantTypeMap, events, onPlantDeleted }: Props) {
+export function HomeScreen({
+  plants,
+  plantTypeMap,
+  events,
+  onPlantDeleted,
+  onPlantUpdated,
+  openPlantRequest = null,
+  onOpenPlantRequestHandled,
+}: Props) {
   const { t } = useI18n();
   const { user, token } = useAuth();
   const [deletingPlantId, setDeletingPlantId] = useState<string | null>(null);
   const [selectedPlantId, setSelectedPlantId] = useState<string | null>(null);
+  const [initialCareKey, setInitialCareKey] = useState<CareEventType | null>(null);
 
   const selectedPlant = useMemo(
     () => plants.find((item) => item.id === selectedPlantId) ?? null,
     [plants, selectedPlantId]
   );
+
+  useEffect(() => {
+    if (!openPlantRequest) {
+      return;
+    }
+
+    setSelectedPlantId(openPlantRequest.plantId);
+    setInitialCareKey(openPlantRequest.careKey ?? null);
+    onOpenPlantRequestHandled?.();
+  }, [openPlantRequest, onOpenPlantRequestHandled]);
 
   const nextWateringByPlant = useMemo(() => {
     const map = new Map<string, string>();
@@ -114,8 +139,16 @@ export function HomeScreen({ plants, plantTypeMap, events, onPlantDeleted }: Pro
           plantType={plantTypeMap.get(selectedPlant.plantTypeId)}
           events={events}
           visible
-          onClose={() => setSelectedPlantId(null)}
+          onClose={() => {
+            setSelectedPlantId(null);
+            setInitialCareKey(null);
+          }}
           onDelete={() => onDeletePlant(selectedPlant)}
+          onCareLogged={() => {
+            setInitialCareKey(null);
+            onPlantUpdated();
+          }}
+          initialCareKey={initialCareKey}
           deleting={deletingPlantId === selectedPlant.id}
         />
       ) : null}

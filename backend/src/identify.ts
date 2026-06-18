@@ -31,6 +31,22 @@ const EXTRA_KEYWORDS: Record<string, string[]> = {
   "chlorophytum-comosum": ["spider"],
   "saintpaulia": ["violet"],
   "hedera-helix": ["ivy"],
+  "schefflera-arboricola": ["schefflera", "seflera", "umbrella", "semsiye"],
+  "syngonium-podophyllum": ["arrowhead", "singonyum", "goosefoot"],
+  "fittonia-albivenis": ["nerve", "mosaic", "fitonya", "sinir"],
+  "beaucarnea-recurvata": ["ponytail", "elephant", "fil", "kuyruk"],
+  "asplenium-nidus": ["nest", "fern", "yuva"],
+  adiantum: ["maidenhair", "fern", "venus", "baldirikara"],
+  "senecio-rowleyanus": ["pearls", "string", "inci"],
+  haworthia: ["zebra", "sukulent"],
+  "dracaena-fragrans": ["corn", "dracaena", "drasena", "misir"],
+  "aspidistra-elatior": ["cast", "iron", "demir"],
+  "pachira-aquatica": ["pachira", "money", "guiana", "guyana", "chestnut"],
+  pelargonium: ["geranium", "sardunya"],
+  "euphorbia-pulcherrima": ["poinsettia", "ataturk", "yildiz"],
+  "hibiscus-rosa-sinensis": ["hibiscus", "japon", "china", "rose"],
+  "fatsia-japonica": ["aralia", "fatsya", "fatsia"],
+  "cordyline-fruticosa": ["cordyline", "kordilin"],
 };
 
 function keywordsFor(plantType: PlantType): string[] {

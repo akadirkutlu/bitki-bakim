@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -23,8 +24,13 @@ import {
   getPlants,
   getPlantTypes,
 } from "./services/api";
+import {
+  addNotificationResponseListener,
+  getInitialNotificationNavigation,
+  syncAllPlantReminders,
+} from "./services/notifications";
 import { colors, radii, spacing, typography } from "./theme";
-import type { CalendarEvent, Plant, PlantType } from "./types";
+import type { CalendarEvent, CareEventType, Plant, PlantType } from "./types";
 import { showErrorAlert } from "./utils/alerts";
 
 function hiddenTabStyle(active: boolean) {
@@ -39,17 +45,34 @@ export function MainApp() {
   const [plants, setPlants] = useState<Plant[]>([]);
   const [plantTypes, setPlantTypes] = useState<PlantType[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [openPlantRequest, setOpenPlantRequest] = useState<{
+    plantId: string;
+    careKey?: CareEventType;
+  } | null>(null);
 
   const plantTypeMap = useMemo(
     () => new Map(plantTypes.map((item) => [item.id, item])),
     [plantTypes]
   );
 
-  async function loadAll() {
+  function handleNotificationNavigation(navigation: {
+    plantId: string;
+    careType?: CareEventType;
+  }) {
+    setTab("home");
+    setOpenPlantRequest({
+      plantId: navigation.plantId,
+      careKey: navigation.careType,
+    });
+  }
+
+  async function loadAll(options?: { silent?: boolean }) {
     if (!token) {
       return;
     }
-    setLoading(true);
+    if (!options?.silent) {
+      setLoading(true);
+    }
     try {
       const [types, userPlants, calendarEvents] = await Promise.all([
         getPlantTypes(token),
@@ -60,16 +83,44 @@ export function MainApp() {
       setPlantTypes(types);
       setPlants(userPlants);
       setEvents(calendarEvents);
+      try {
+        await syncAllPlantReminders(userPlants, types);
+      } catch {
+        // Reminders are best-effort; app data still loads.
+      }
     } catch (error) {
       showErrorAlert(t, extractApiMessage(error, t("unexpectedError")));
     } finally {
-      setLoading(false);
+      if (!options?.silent) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
     loadAll().catch(() => undefined);
   }, [token]);
+
+  useEffect(() => {
+    const initialNavigation = getInitialNotificationNavigation();
+    if (initialNavigation) {
+      handleNotificationNavigation(initialNavigation);
+    }
+
+    return addNotificationResponseListener(handleNotificationNavigation);
+  }, [token]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState !== "active" || !token) {
+        return;
+      }
+
+      syncAllPlantReminders(plants, plantTypeMap).catch(() => undefined);
+    });
+
+    return () => subscription.remove();
+  }, [token, plants, plantTypeMap]);
 
   if (loading) {
     return (
@@ -101,6 +152,9 @@ export function MainApp() {
             plantTypeMap={plantTypeMap}
             events={events}
             onPlantDeleted={() => loadAll().catch(() => undefined)}
+            onPlantUpdated={() => loadAll({ silent: true }).catch(() => undefined)}
+            openPlantRequest={openPlantRequest}
+            onOpenPlantRequestHandled={() => setOpenPlantRequest(null)}
           />
         </View>
         <View style={hiddenTabStyle(tab === "add")}>

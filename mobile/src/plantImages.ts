@@ -41,6 +41,22 @@ const plantImages: Record<string, ImageSourcePropType> = {
   gardenia: require("../assets/plants/gardenia.png"),
   "codiaeum-variegatum": require("../assets/plants/codiaeum-variegatum.png"),
   aglaonema: require("../assets/plants/aglaonema.png"),
+  "schefflera-arboricola": require("../assets/plants/schefflera-arboricola.png"),
+  "syngonium-podophyllum": require("../assets/plants/syngonium-podophyllum.png"),
+  "fittonia-albivenis": require("../assets/plants/fittonia-albivenis.png"),
+  "beaucarnea-recurvata": require("../assets/plants/beaucarnea-recurvata.png"),
+  "asplenium-nidus": require("../assets/plants/asplenium-nidus.png"),
+  adiantum: require("../assets/plants/adiantum.png"),
+  "senecio-rowleyanus": require("../assets/plants/senecio-rowleyanus.png"),
+  haworthia: require("../assets/plants/haworthia.png"),
+  "dracaena-fragrans": require("../assets/plants/dracaena-fragrans.png"),
+  "aspidistra-elatior": require("../assets/plants/aspidistra-elatior.png"),
+  "pachira-aquatica": require("../assets/plants/pachira-aquatica.png"),
+  pelargonium: require("../assets/plants/pelargonium.png"),
+  "euphorbia-pulcherrima": require("../assets/plants/euphorbia-pulcherrima.png"),
+  "hibiscus-rosa-sinensis": require("../assets/plants/hibiscus-rosa-sinensis.png"),
+  "fatsia-japonica": require("../assets/plants/fatsia-japonica.png"),
+  "cordyline-fruticosa": require("../assets/plants/cordyline-fruticosa.png"),
 };
 
 const fallbackImage: ImageSourcePropType = require("../assets/plants/generic-plant.png");

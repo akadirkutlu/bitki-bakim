@@ -13,6 +13,19 @@ function isBeforeOrEqual(a: string, b: string): boolean {
   return new Date(a).getTime() <= new Date(b).getTime();
 }
 
+function isBefore(a: string, b: string): boolean {
+  return new Date(a).getTime() < new Date(b).getTime();
+}
+
+/** Advances a scheduled date until it is today or in the future. */
+function advanceToUpcoming(firstDate: string, intervalDays: number, today: string): string {
+  let date = firstDate;
+  while (isBefore(date, today)) {
+    date = addDays(date, intervalDays);
+  }
+  return date;
+}
+
 export function buildCalendarEvents(plants: Plant[]): PlantCalendarEvent[] {
   const today = new Date().toISOString().slice(0, 10);
   const horizon = addDays(today, LOOKAHEAD_DAYS);
@@ -25,17 +38,20 @@ export function buildCalendarEvents(plants: Plant[]): PlantCalendarEvent[] {
       continue;
     }
 
-    let nextWatering = addDays(
-      plant.lastWateringDate,
-      plantType.defaultWateringDays
+    let nextWatering = advanceToUpcoming(
+      addDays(plant.lastWateringDate, plantType.defaultWateringDays),
+      plantType.defaultWateringDays,
+      today
     );
-    let nextFeeding = addDays(
-      plant.lastFeedingDate,
-      plantType.defaultFeedingDays
+    let nextFeeding = advanceToUpcoming(
+      addDays(plant.lastFeedingDate, plantType.defaultFeedingDays),
+      plantType.defaultFeedingDays,
+      today
     );
-    let nextSoilChange = addDays(
-      plant.lastSoilChangeDate,
-      plantType.defaultSoilChangeDays
+    let nextSoilChange = advanceToUpcoming(
+      addDays(plant.lastSoilChangeDate, plantType.defaultSoilChangeDays),
+      plantType.defaultSoilChangeDays,
+      today
     );
 
     while (isBeforeOrEqual(nextWatering, horizon)) {

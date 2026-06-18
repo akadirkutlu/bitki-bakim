@@ -40,16 +40,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function bootstrap() {
-      const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
-      const storedUser = await AsyncStorage.getItem(USER_KEY);
-      if (storedToken && storedUser) {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser) as User);
+    let alive = true;
+
+    const timeout = setTimeout(() => {
+      if (alive) {
+        setLoading(false);
       }
-      setLoading(false);
+    }, 3000);
+
+    async function bootstrap() {
+      try {
+        const storedToken = await AsyncStorage.getItem(TOKEN_KEY);
+        const storedUser = await AsyncStorage.getItem(USER_KEY);
+
+        if (storedToken && storedUser) {
+          try {
+            setToken(storedToken);
+            setUser(JSON.parse(storedUser) as User);
+          } catch {
+            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+          }
+        }
+      } finally {
+        if (alive) {
+          setLoading(false);
+        }
+        clearTimeout(timeout);
+      }
     }
-    bootstrap().catch(() => setLoading(false));
+
+    bootstrap().catch(() => {
+      if (alive) {
+        setLoading(false);
+      }
+      clearTimeout(timeout);
+    });
+
+    return () => {
+      alive = false;
+      clearTimeout(timeout);
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(

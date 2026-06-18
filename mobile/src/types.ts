@@ -29,10 +29,19 @@ export type Plant = {
   photoUri?: string;
 };
 
+export type CareEventType = "watering" | "feeding" | "soil_change";
+
 export type CalendarEvent = {
   plantId: string;
   plantNickname: string;
   plantLatinName: string;
   date: string;
-  eventType: "watering" | "feeding" | "soil_change";
+  eventType: CareEventType;
+};
+
+export type UpdatePlantPayload = {
+  nickname?: string;
+  lastWateringDate?: string;
+  lastFeedingDate?: string;
+  lastSoilChangeDate?: string;
 };
