@@ -18,6 +18,7 @@ import { useI18n } from "../localization/I18nContext";
 import { getPlantImage } from "../plantImages";
 import {
   createPlant,
+  extractApiCode,
   extractApiMessage,
   identifyByPhoto,
   isCanceledError,
@@ -59,6 +60,7 @@ type Props = {
   plantTypes: PlantType[];
   plants: Plant[];
   onCreated: () => void;
+  onPlanLimitReached?: () => void;
 };
 
 type DateFieldKey = "watering" | "feeding" | "soil";
@@ -146,7 +148,7 @@ function resetFormState(
   setSearch("");
 }
 
-export function AddPlantScreen({ plantTypes, plants, onCreated }: Props) {
+export function AddPlantScreen({ plantTypes, plants, onCreated, onPlanLimitReached }: Props) {
   const { t, language } = useI18n();
   const { token } = useAuth();
 
@@ -321,8 +323,17 @@ export function AddPlantScreen({ plantTypes, plants, onCreated }: Props) {
       onCreated();
     } catch (error) {
       const message = extractApiMessage(error, t("unexpectedError"));
-      if (message.toLowerCase().includes("free plan limit")) {
-        showPlanAlert(t, t("premiumRequired"));
+      const code = extractApiCode(error);
+      if (
+        code === "PLAN_LIMIT_REACHED" ||
+        code === "FREE_LIMIT_REACHED" ||
+        message.toLowerCase().includes("plan limit")
+      ) {
+        if (onPlanLimitReached) {
+          onPlanLimitReached();
+        } else {
+          showPlanAlert(t, t("premiumRequired"));
+        }
       } else if (message.toLowerCase().includes("nickname already exists")) {
         showMessageAlert(t, t("validationDuplicatePlantName"));
       } else {

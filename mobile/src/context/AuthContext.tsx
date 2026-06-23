@@ -5,6 +5,7 @@ import {
   loginWithApple as apiLoginWithApple,
   loginWithGoogle as apiLoginWithGoogle,
   register as apiRegister,
+  getMe,
 } from "../services/api";
 import type { User } from "../types";
 
@@ -29,6 +30,8 @@ type AuthContextValue = {
       familyName?: string;
     };
   }) => Promise<void>;
+  refreshUser: () => Promise<User | null>;
+  updateUser: (user: User) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -114,6 +117,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(response.user);
         await AsyncStorage.setItem(TOKEN_KEY, response.token);
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+      },
+      refreshUser: async () => {
+        if (!token) {
+          return null;
+        }
+        const nextUser = await getMe(token);
+        setUser(nextUser);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
+        return nextUser;
+      },
+      updateUser: async (nextUser) => {
+        setUser(nextUser);
+        await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
       },
       logout: async () => {
         setToken(null);

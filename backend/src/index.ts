@@ -4,12 +4,26 @@ import dotenv from "dotenv";
 import express from "express";
 import { z, type ZodError } from "zod";
 import { authMiddleware, type AuthenticatedRequest, signToken } from "./auth";
+import {
+  isAppleConfigured,
+  shouldDowngradeFromNotification,
+  shouldUpgradeFromNotification,
+  verifyAppleNotification,
+  verifyAppleSignedTransaction,
+} from "./appleSubscriptions";
 import { buildCalendarEvents } from "./calendar";
 import { readDb, writeDb } from "./db";
 import { identifyPlantCandidates } from "./identify";
+import { getPlantLimit, isPlantLimitReached } from "./plans";
 import { PLANT_TYPES } from "./plantTypes";
 import { identifyPlantHintFromImage, isPlantVisionConfigured } from "./plantVision";
 import { verifyAppleIdentityToken, verifyGoogleIdToken } from "./socialAuth";
+import {
+  applySubscriptionToUser,
+  downgradeUserSubscription,
+  findConflictingSubscriptionOwner,
+  findUserByOriginalTransactionId,
+} from "./subscriptionService";
 import type { Plant } from "./types";
 import { socialProviderLabel, toPublicUser, upsertSocialUser } from "./userAuth";
 
@@ -215,6 +229,133 @@ app.post("/auth/apple", async (req, res) => {
   }
 });
 
+app.get("/auth/me", authMiddleware, async (req, res) => {
+  const userId = (req as AuthenticatedRequest).userId;
+  const db = await readDb();
+  const user = db.users.find((item) => item.id === userId);
+
+  if (!user) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  res.json({ user: toPublicUser(user) });
+});
+
+const verifyAppleSubscriptionSchema = z.object({
+  signedTransaction: z.string().min(1),
+});
+
+app.post("/subscription/apple/verify", authMiddleware, async (req, res) => {
+  const userId = (req as AuthenticatedRequest).userId;
+  const parseResult = verifyAppleSubscriptionSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    validationErrorResponse(res, parseResult.error);
+    return;
+  }
+
+  if (!isAppleConfigured()) {
+    res.status(503).json({ message: "Apple subscription verification is not configured" });
+    return;
+  }
+
+  try {
+    const subscription = await verifyAppleSignedTransaction(parseResult.data.signedTransaction);
+    const db = await readDb();
+    const user = db.users.find((item) => item.id === userId);
+
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    if (!subscription.originalTransactionId) {
+      res.status(400).json({ message: "Invalid Apple transaction" });
+      return;
+    }
+
+    const conflictingOwner = findConflictingSubscriptionOwner(
+      db.users,
+      subscription.originalTransactionId,
+      userId
+    );
+
+    if (conflictingOwner) {
+      res.status(409).json({
+        message: "This subscription is already linked to another account",
+        code: "SUBSCRIPTION_ALREADY_LINKED",
+      });
+      return;
+    }
+
+    applySubscriptionToUser(user, subscription);
+    await writeDb(db);
+
+    res.json({ user: toPublicUser(user) });
+  } catch (error) {
+    res.status(400).json({
+      message: error instanceof Error ? error.message : "Could not verify Apple subscription",
+    });
+  }
+});
+
+const appleWebhookSchema = z.object({
+  signedPayload: z.string().min(1),
+});
+
+app.post("/webhooks/apple/subscriptions", async (req, res) => {
+  const parseResult = appleWebhookSchema.safeParse(req.body);
+
+  if (!parseResult.success) {
+    res.status(400).json({ message: "Invalid payload" });
+    return;
+  }
+
+  if (!isAppleConfigured()) {
+    res.status(503).json({ message: "Apple subscription verification is not configured" });
+    return;
+  }
+
+  try {
+    const notification = await verifyAppleNotification(parseResult.data.signedPayload);
+    const signedTransactionInfo = notification.data?.signedTransactionInfo;
+
+    if (!signedTransactionInfo) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    const subscription = await verifyAppleSignedTransaction(signedTransactionInfo);
+    const db = await readDb();
+    const user = findUserByOriginalTransactionId(db.users, subscription.originalTransactionId);
+
+    if (!user) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (shouldDowngradeFromNotification(notification)) {
+      downgradeUserSubscription(user);
+    } else if (shouldUpgradeFromNotification(notification)) {
+      applySubscriptionToUser(user, subscription);
+    } else if (!subscription.isActive) {
+      downgradeUserSubscription(user);
+    } else {
+      applySubscriptionToUser(user, subscription);
+    }
+
+    await writeDb(db);
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Apple subscription webhook failed:", error);
+    res.status(400).json({
+      message: error instanceof Error ? error.message : "Could not process Apple notification",
+    });
+  }
+});
+
 app.get("/plant-types", authMiddleware, (_req, res) => {
   res.json({ plantTypes: PLANT_TYPES });
 });
@@ -254,11 +395,13 @@ app.post("/plants", authMiddleware, async (req, res) => {
     return;
   }
 
-  if (user.plan === "free" && userPlants.length >= 5) {
+  if (isPlantLimitReached(user.plan, userPlants.length)) {
+    const maxPlants = getPlantLimit(user.plan);
     res.status(402).json({
-      message: "Free plan limit reached",
-      code: "FREE_LIMIT_REACHED",
-      maxFreePlants: 5,
+      message: "Plan limit reached",
+      code: "PLAN_LIMIT_REACHED",
+      plan: user.plan,
+      maxPlants,
     });
     return;
   }

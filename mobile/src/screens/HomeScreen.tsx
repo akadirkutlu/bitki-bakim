@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { IllustrationImage } from "../components/PlantImage";
 import { PlantCard } from "../components/PlantCard";
 import { PlantDetailScreen } from "./PlantDetailScreen";
@@ -10,8 +10,7 @@ import { deletePlant, extractApiMessage } from "../services/api";
 import { colors, radii, spacing, typography } from "../theme";
 import type { CalendarEvent, CareEventType, Plant, PlantType } from "../types";
 import { showConfirmAlert, showErrorAlert } from "../utils/alerts";
-
-const MAX_FREE_PLANTS = 5;
+import { FREE_PLANT_LIMIT } from "../plans";
 
 type Props = {
   plants: Plant[];
@@ -19,6 +18,7 @@ type Props = {
   events: CalendarEvent[];
   onPlantDeleted: () => void;
   onPlantUpdated: () => void;
+  onUpgrade?: () => void;
   openPlantRequest?: {
     plantId: string;
     careKey?: CareEventType;
@@ -32,6 +32,7 @@ export function HomeScreen({
   events,
   onPlantDeleted,
   onPlantUpdated,
+  onUpgrade,
   openPlantRequest = null,
   onOpenPlantRequestHandled,
 }: Props) {
@@ -67,6 +68,7 @@ export function HomeScreen({
   }, [events]);
 
   const isPremium = user?.plan === "premium";
+  const showUpgradeHint = !isPremium && plants.length >= FREE_PLANT_LIMIT - 1;
 
   function onDeletePlant(plant: Plant) {
     showConfirmAlert(t, {
@@ -94,20 +96,29 @@ export function HomeScreen({
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.greeting}>
-            {t("greeting")}, {user?.name ?? ""} 🌱
-          </Text>
-          <Text style={styles.planLabel}>
-            {isPremium ? t("premiumPlan") : t("freePlan")}
-          </Text>
-        </View>
-        <View style={styles.countBadge}>
+        <Pressable style={styles.headerInfo} onPress={!isPremium ? onUpgrade : undefined} disabled={isPremium}>
+          <View>
+            <Text style={styles.greeting}>
+              {t("greeting")}, {user?.name ?? ""} 🌱
+            </Text>
+            <Text style={styles.planLabel}>
+              {isPremium ? t("premiumPlan") : t("freePlan")}
+            </Text>
+            {showUpgradeHint && onUpgrade ? (
+              <Text style={styles.upgradeHint}>{t("paywallUpgradeHint")}</Text>
+            ) : null}
+          </View>
+        </Pressable>
+        <Pressable
+          style={styles.countBadge}
+          onPress={!isPremium ? onUpgrade : undefined}
+          disabled={isPremium}
+        >
           <Text style={styles.countText}>
             {plants.length}
-            {isPremium ? "" : `/${MAX_FREE_PLANTS}`}
+            {isPremium ? "" : `/${FREE_PLANT_LIMIT}`}
           </Text>
-        </View>
+        </Pressable>
       </View>
 
       <FlatList
@@ -167,6 +178,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: spacing.lg,
   },
+  headerInfo: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
   greeting: {
     fontSize: typography.heading + 2,
     fontWeight: "800",
@@ -176,6 +191,12 @@ const styles = StyleSheet.create({
     fontSize: typography.small,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  upgradeHint: {
+    marginTop: spacing.xs,
+    fontSize: typography.small,
+    color: colors.leafDark,
+    fontWeight: "700",
   },
   countBadge: {
     backgroundColor: colors.sunYellowLight,

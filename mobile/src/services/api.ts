@@ -97,6 +97,25 @@ export async function getCalendar(token: string): Promise<CalendarEvent[]> {
   return data.events;
 }
 
+export async function getMe(token: string): Promise<User> {
+  const { data } = await client.get<{ user: User }>("/auth/me", {
+    headers: authHeaders(token),
+  });
+  return data.user;
+}
+
+export async function verifyAppleSubscription(
+  token: string,
+  signedTransaction: string
+): Promise<{ user: User }> {
+  const { data } = await client.post<{ user: User }>(
+    "/subscription/apple/verify",
+    { signedTransaction },
+    { headers: authHeaders(token) }
+  );
+  return data;
+}
+
 export async function identifyByPhoto(
   token: string,
   payload: { imageBase64?: string; imageHint?: string },
@@ -112,6 +131,13 @@ export async function identifyByPhoto(
 
 export function isCanceledError(error: unknown): boolean {
   return axios.isCancel(error);
+}
+
+export function extractApiCode(error: unknown): string | undefined {
+  if (axios.isAxiosError(error)) {
+    return (error.response?.data as { code?: string } | undefined)?.code;
+  }
+  return undefined;
 }
 
 export function extractApiMessage(

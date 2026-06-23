@@ -68,7 +68,8 @@
         {
           "color": "#4C9A5C"
         }
-      ]
+      ],
+      "expo-iap"
     ],
     "extra": {
       "eas": {

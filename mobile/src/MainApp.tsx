@@ -18,12 +18,17 @@ import { preloadPlantImages } from "./plantImages";
 import { AddPlantScreen } from "./screens/AddPlantScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { HomeScreen } from "./screens/HomeScreen";
+import { PaywallScreen } from "./screens/PaywallScreen";
 import {
   extractApiMessage,
   getCalendar,
   getPlants,
   getPlantTypes,
 } from "./services/api";
+import {
+  initIapConnection,
+  syncExistingPremiumPurchase,
+} from "./services/subscriptions";
 import {
   addNotificationResponseListener,
   getInitialNotificationNavigation,
@@ -39,9 +44,10 @@ function hiddenTabStyle(active: boolean) {
 
 export function MainApp() {
   const { t } = useI18n();
-  const { token, logout } = useAuth();
+  const { token, logout, refreshUser, updateUser, user } = useAuth();
   const [tab, setTab] = useState<TabKey>("home");
   const [loading, setLoading] = useState(true);
+  const [paywallVisible, setPaywallVisible] = useState(false);
   const [plants, setPlants] = useState<Plant[]>([]);
   const [plantTypes, setPlantTypes] = useState<PlantType[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -102,6 +108,30 @@ export function MainApp() {
   }, [token]);
 
   useEffect(() => {
+    if (!token || user?.plan === "premium") {
+      return;
+    }
+
+    let alive = true;
+
+    async function syncSubscription() {
+      await initIapConnection();
+      const nextUser = await syncExistingPremiumPurchase(token!);
+      if (alive && nextUser) {
+        await updateUser(nextUser);
+      } else if (alive) {
+        await refreshUser().catch(() => undefined);
+      }
+    }
+
+    syncSubscription().catch(() => undefined);
+
+    return () => {
+      alive = false;
+    };
+  }, [token, user?.plan, refreshUser, updateUser]);
+
+  useEffect(() => {
     const initialNavigation = getInitialNotificationNavigation();
     if (initialNavigation) {
       handleNotificationNavigation(initialNavigation);
@@ -153,6 +183,7 @@ export function MainApp() {
             events={events}
             onPlantDeleted={() => loadAll().catch(() => undefined)}
             onPlantUpdated={() => loadAll({ silent: true }).catch(() => undefined)}
+            onUpgrade={() => setPaywallVisible(true)}
             openPlantRequest={openPlantRequest}
             onOpenPlantRequestHandled={() => setOpenPlantRequest(null)}
           />
@@ -165,6 +196,7 @@ export function MainApp() {
               setTab("home");
               loadAll().catch(() => undefined);
             }}
+            onPlanLimitReached={() => setPaywallVisible(true)}
           />
         </View>
         <View style={hiddenTabStyle(tab === "calendar")}>
@@ -173,6 +205,13 @@ export function MainApp() {
       </View>
 
       <TabBar active={tab} onChange={setTab} />
+      <PaywallScreen
+        visible={paywallVisible}
+        onClose={() => setPaywallVisible(false)}
+        onSuccess={() => {
+          refreshUser().catch(() => undefined);
+        }}
+      />
       <StatusBar style="dark" />
     </SafeAreaView>
   );

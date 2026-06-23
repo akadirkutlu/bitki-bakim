@@ -49,10 +49,35 @@ Free-tier use requires Pl@ntNet attribution — see their [terms of use](https:/
 
 Without `PLANTNET_API_KEY`, photo identification is unavailable and the app falls back to manual search.
 
-## Monetization Hook
+## Monetization
 
-Free users can add up to 5 plants. On the 6th attempt API returns:
+Free users can add up to 5 plants. On the 6th attempt the API returns:
 - HTTP `402`
-- code: `FREE_LIMIT_REACHED`
+- code: `PLAN_LIMIT_REACHED`
 
-You can connect this response to real in-app subscription flow later.
+Premium (unlimited plants) is unlocked via an Apple auto-renewable subscription (`com.bitkibakim.app.premium.monthly`).
+
+### Backend Apple IAP env vars
+
+Set these in `backend/.env` (see `backend/.env.example`):
+
+- `APPLE_BUNDLE_ID`, `APPLE_APP_ID`, `APPLE_ISSUER_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY`
+- `APPLE_ENVIRONMENT=Sandbox` for TestFlight/sandbox testing
+- `APPLE_PREMIUM_PRODUCT_IDS=com.bitkibakim.app.premium.monthly`
+
+Webhook URL for App Store Server Notifications V2:
+
+`POST https://<your-backend>/webhooks/apple/subscriptions`
+
+### Mobile IAP testing (TestFlight)
+
+1. Create the subscription product in App Store Connect (Ready to Submit).
+2. Add a sandbox tester account on the device.
+3. Rebuild the iOS app after installing `expo-iap` (IAP does not work in Expo Go):
+
+```bash
+cd mobile
+eas build --platform ios --profile production
+```
+
+4. Optional: override product id via `EXPO_PUBLIC_PREMIUM_PRODUCT_ID` in `eas.json` env.

@@ -12,6 +12,9 @@ export type User = {
   passwordHash?: string;
   googleId?: string;
   appleId?: string;
+  appleOriginalTransactionId?: string;
+  subscriptionExpiresAt?: string;
+  subscriptionProductId?: string;
 };
 
 export type PublicUser = {

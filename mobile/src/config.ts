@@ -57,3 +57,7 @@ export const API_BASE_URL =
   configuredUrl && configuredUrl.length > 0
     ? configuredUrl
     : `http://${getApiHost()}:${API_PORT}`;
+
+export const PREMIUM_PRODUCT_IDS = [
+  process.env.EXPO_PUBLIC_PREMIUM_PRODUCT_ID?.trim() || "com.bitkibakim.app.premium.monthly",
+];
