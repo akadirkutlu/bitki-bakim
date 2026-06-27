@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { MongoClient, type Collection } from "mongodb";
 import type { DatabaseShape, Plant, User } from "./types";
 import { normalizeUser } from "./userAuth";
 
@@ -7,6 +8,86 @@ const DATA_DIR = path.join(__dirname, "..", "data");
 const USERS_FILE_PATH = path.join(DATA_DIR, "users.json");
 const PLANTS_FILE_PATH = path.join(DATA_DIR, "plants.json");
 const LEGACY_DB_FILE_PATH = path.join(DATA_DIR, "db.json");
+
+const MONGODB_URI = process.env.MONGODB_URI?.trim();
+const MONGODB_DB = process.env.MONGODB_DB?.trim() || "bitkibakim";
+
+/* ------------------------------------------------------------------ */
+/* MongoDB backend (used when MONGODB_URI is set — persistent, always-on) */
+/* ------------------------------------------------------------------ */
+
+let clientPromise: Promise<MongoClient> | null = null;
+
+function getClient(): Promise<MongoClient> {
+  if (!clientPromise) {
+    const client = new MongoClient(MONGODB_URI as string, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 10000,
+    });
+    clientPromise = client.connect();
+  }
+  return clientPromise;
+}
+
+async function getCollections(): Promise<{
+  users: Collection<User>;
+  plants: Collection<Plant>;
+}> {
+  const client = await getClient();
+  const db = client.db(MONGODB_DB);
+  return {
+    users: db.collection<User>("users"),
+    plants: db.collection<Plant>("plants"),
+  };
+}
+
+async function readDbMongo(): Promise<DatabaseShape> {
+  const { users, plants } = await getCollections();
+  const [userDocs, plantDocs] = await Promise.all([
+    users.find({}, { projection: { _id: 0 } }).toArray(),
+    plants.find({}, { projection: { _id: 0 } }).toArray(),
+  ]);
+
+  return {
+    users: userDocs.map((user) => normalizeUser(user as User)),
+    plants: plantDocs as Plant[],
+  };
+}
+
+async function syncCollection<T extends { id: string }>(
+  collection: Collection<T>,
+  items: T[]
+): Promise<void> {
+  const col = collection as unknown as Collection;
+
+  if (items.length > 0) {
+    await col.bulkWrite(
+      items.map((item) => ({
+        replaceOne: {
+          filter: { id: item.id },
+          replacement: item,
+          upsert: true,
+        },
+      })),
+      { ordered: false }
+    );
+  }
+
+  const keepIds = items.map((item) => item.id);
+  await col.deleteMany({ id: { $nin: keepIds } });
+}
+
+async function writeDbMongo(data: DatabaseShape): Promise<void> {
+  const { users, plants } = await getCollections();
+  await Promise.all([
+    syncCollection(users, data.users),
+    syncCollection(plants, data.plants),
+  ]);
+}
+
+/* ------------------------------------------------------------------ */
+/* File backend (local development fallback when MONGODB_URI is unset)  */
+/* ------------------------------------------------------------------ */
 
 async function ensureDataDir(): Promise<void> {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -54,7 +135,7 @@ async function ensureDbFiles(): Promise<void> {
   }
 }
 
-export async function readDb(): Promise<DatabaseShape> {
+async function readDbFile(): Promise<DatabaseShape> {
   await ensureDbFiles();
 
   const [users, plants] = await Promise.all([
@@ -68,10 +149,22 @@ export async function readDb(): Promise<DatabaseShape> {
   };
 }
 
-export async function writeDb(data: DatabaseShape): Promise<void> {
+async function writeDbFile(data: DatabaseShape): Promise<void> {
   await ensureDataDir();
   await Promise.all([
     fs.writeFile(USERS_FILE_PATH, JSON.stringify(data.users, null, 2), "utf-8"),
     fs.writeFile(PLANTS_FILE_PATH, JSON.stringify(data.plants, null, 2), "utf-8"),
   ]);
+}
+
+/* ------------------------------------------------------------------ */
+/* Public API — picks backend based on MONGODB_URI                      */
+/* ------------------------------------------------------------------ */
+
+export async function readDb(): Promise<DatabaseShape> {
+  return MONGODB_URI ? readDbMongo() : readDbFile();
+}
+
+export async function writeDb(data: DatabaseShape): Promise<void> {
+  return MONGODB_URI ? writeDbMongo(data) : writeDbFile(data);
 }
