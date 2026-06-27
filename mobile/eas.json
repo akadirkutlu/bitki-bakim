@@ -11,13 +11,13 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://bitki-bakim.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://site--bitki-bakim--8tttyxtbrjk6.code.run"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://bitki-bakim.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://site--bitki-bakim--8tttyxtbrjk6.code.run"
       }
     }
   },
