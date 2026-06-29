@@ -9,6 +9,7 @@ import {
   register as apiRegister,
   getMe,
 } from "../services/api";
+import { clearAppleStoredDisplayName } from "../services/socialAuth";
 import type { User } from "../types";
 
 const TOKEN_KEY = "auth_token";
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(null);
       setUser(null);
       await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+      await clearAppleStoredDisplayName();
     }
 
     return {

@@ -46,6 +46,25 @@ export async function verifyGoogleIdToken(idToken: string): Promise<GoogleProfil
   };
 }
 
+export function deriveAppleFallbackName(email: string): string {
+  const at = email.indexOf("@");
+  if (at < 0) {
+    return "Apple User";
+  }
+
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1).toLowerCase();
+  if (
+    domain.endsWith("privaterelay.appleid.com") ||
+    domain === "privaterelay.local" ||
+    local.startsWith("apple-")
+  ) {
+    return "Apple User";
+  }
+
+  return local || "Apple User";
+}
+
 function getAppleClientIds(): string[] {
   const raw = process.env.APPLE_CLIENT_IDS ?? process.env.APPLE_CLIENT_ID ?? "";
   return raw
@@ -84,7 +103,7 @@ export async function verifyAppleIdentityToken(
       return {
         appleId: payload.sub,
         email,
-        name: email.split("@")[0] || "Apple User",
+        name: deriveAppleFallbackName(email),
       };
     } catch (error) {
       lastError = error;

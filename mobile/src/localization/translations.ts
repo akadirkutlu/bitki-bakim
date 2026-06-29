@@ -117,7 +117,6 @@ export const translations: Record<"tr" | "en", TranslationMap> = {
     paywallPerMonth: "/ ay",
     paywallAutoRenewNotice:
       "Abonelik, dönem bitiminden en az 24 saat önce iptal edilmediği sürece otomatik olarak yenilenir ve Apple Kimliği hesabınızdan tahsil edilir. Aboneliği istediğin zaman Ayarlar → Apple Kimliği → Abonelikler bölümünden yönetebilir veya iptal edebilirsin.",
-    legalAgreementIntro: "Devam ederek aşağıdakileri kabul etmiş olursun:",
     termsOfUse: "Kullanım Koşulları",
     privacyPolicy: "Gizlilik Politikası",
     continueAsGuest: "Hesap olmadan devam et",
@@ -254,7 +253,6 @@ export const translations: Record<"tr" | "en", TranslationMap> = {
     paywallPerMonth: "/ month",
     paywallAutoRenewNotice:
       "The subscription auto-renews and is charged to your Apple ID account unless cancelled at least 24 hours before the end of the period. You can manage or cancel anytime in Settings → Apple ID → Subscriptions.",
-    legalAgreementIntro: "By continuing, you agree to our:",
     termsOfUse: "Terms of Use",
     privacyPolicy: "Privacy Policy",
     continueAsGuest: "Continue without an account",

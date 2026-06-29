@@ -4,6 +4,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
+  type KeyboardEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -163,9 +166,42 @@ export function AddPlantScreen({ plantTypes, plants, onCreated, onPlanLimitReach
   const [saving, setSaving] = useState(false);
 
   const identifyControllerRef = useRef<AbortController | null>(null);
+  const screenRef = useRef<View>(null);
+  const [keyboardLift, setKeyboardLift] = useState(0);
 
   useEffect(() => {
     return () => identifyControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    function onKeyboardShow(event: KeyboardEvent) {
+      const keyboardTop = event.endCoordinates.screenY;
+      const measure = () => {
+        screenRef.current?.measureInWindow((_x, y, _width, height) => {
+          const overlap = Math.max(0, y + height - keyboardTop);
+          setKeyboardLift(overlap);
+        });
+      };
+      if (Platform.OS === "android") {
+        requestAnimationFrame(measure);
+      } else {
+        measure();
+      }
+    }
+
+    function onKeyboardHide() {
+      setKeyboardLift(0);
+    }
+
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
+    const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
   }, []);
 
   function cancelIdentify() {
@@ -362,11 +398,15 @@ export function AddPlantScreen({ plantTypes, plants, onCreated, onPlanLimitReach
   const selectedType = plantTypes.find((type) => type.id === selectedTypeId);
 
   return (
-    <View style={styles.screen}>
+    <View ref={screenRef} style={styles.screen}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[
+          styles.container,
+          { paddingBottom: SCROLL_BOTTOM_INSET + keyboardLift },
+        ]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
       <View style={styles.stepHeader}>
         <Text style={styles.stepLabel}>
@@ -511,7 +551,10 @@ export function AddPlantScreen({ plantTypes, plants, onCreated, onPlanLimitReach
       ) : null}
       </ScrollView>
 
-      <View style={styles.floatingActions} pointerEvents="box-none">
+      <View
+        style={[styles.floatingActions, { bottom: FLOATING_ACTION_BOTTOM + keyboardLift }]}
+        pointerEvents="box-none"
+      >
         {step > 1 ? (
           <Pressable style={styles.floatingBack} onPress={onBack}>
             <Ionicons name="arrow-back" size={18} color={colors.leafDark} />
@@ -563,7 +606,6 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.lg,
     gap: spacing.md,
-    paddingBottom: SCROLL_BOTTOM_INSET,
   },
   stepHeader: {
     gap: spacing.xs,
@@ -797,7 +839,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: spacing.lg,
     right: spacing.lg,
-    bottom: FLOATING_ACTION_BOTTOM,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",

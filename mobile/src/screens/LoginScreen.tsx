@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -142,36 +143,37 @@ export function LoginScreen({ onClose }: Props = {}) {
       colors={[colors.leafPale, colors.cream, colors.cream]}
       style={styles.gradient}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
+      <SafeAreaView style={styles.flex}>
+        <View style={[styles.topBar, onClose ? styles.topBarWithClose : null]}>
+          {onClose ? (
+            <Pressable
+              onPress={onClose}
+              disabled={loading}
+              style={styles.closeButton}
+              accessibilityLabel={t("cancel")}
+            >
+              <Ionicons name="close" size={20} color={colors.textDark} />
+            </Pressable>
+          ) : null}
+          <LanguageToggle />
+        </View>
+
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.topBar}>
-            {onClose ? (
-              <Pressable
-                onPress={onClose}
-                disabled={loading}
-                style={styles.closeButton}
-                accessibilityLabel={t("cancel")}
-              >
-                <Ionicons name="close" size={20} color={colors.textDark} />
-              </Pressable>
-            ) : (
-              <View />
-            )}
-            <LanguageToggle />
-          </View>
+          <ScrollView
+            contentContainerStyle={styles.scroll}
+            keyboardShouldPersistTaps="handled"
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+          >
+            <IllustrationImage source={heroImage} style={styles.hero} />
 
-          <IllustrationImage source={heroImage} style={styles.hero} />
+            <Text style={styles.title}>{t("appTitle")}</Text>
+            <Text style={styles.tagline}>{t("appTagline")}</Text>
 
-          <Text style={styles.title}>{t("appTitle")}</Text>
-          <Text style={styles.tagline}>{t("appTagline")}</Text>
-
-          <View style={styles.card}>
+            <View style={styles.card}>
             {showSocialSection ? (
               <>
                 <Pressable
@@ -287,20 +289,18 @@ export function LoginScreen({ onClose }: Props = {}) {
             </Pressable>
           ) : null}
 
-          <View style={styles.legalRow}>
-            <Text style={styles.legalIntro}>{t("legalAgreementIntro")}</Text>
-            <View style={styles.legalLinks}>
-              <Pressable onPress={openTermsOfUse} hitSlop={8}>
-                <Text style={styles.legalLink}>{t("termsOfUse")}</Text>
-              </Pressable>
-              <Text style={styles.legalDot}>·</Text>
-              <Pressable onPress={openPrivacyPolicy} hitSlop={8}>
-                <Text style={styles.legalLink}>{t("privacyPolicy")}</Text>
-              </Pressable>
-            </View>
+          <View style={styles.legalLinks}>
+            <Pressable onPress={openTermsOfUse} hitSlop={8}>
+              <Text style={styles.legalLink}>{t("termsOfUse")}</Text>
+            </Pressable>
+            <Text style={styles.legalDot}>·</Text>
+            <Pressable onPress={openPrivacyPolicy} hitSlop={8}>
+              <Text style={styles.legalLink}>{t("privacyPolicy")}</Text>
+            </Pressable>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
@@ -315,13 +315,20 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
-    padding: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.lg,
   },
   topBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  topBarWithClose: {
+    justifyContent: "space-between",
   },
   closeButton: {
     width: 40,
@@ -335,7 +342,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     width: "100%",
-    height: 190,
+    height: 160,
     marginBottom: spacing.md,
   },
   title: {
@@ -432,7 +439,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   guestButton: {
-    marginTop: spacing.lg,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: spacing.md,
@@ -443,19 +449,10 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     textDecorationLine: "underline",
   },
-  legalRow: {
-    marginTop: spacing.lg,
-    alignItems: "center",
-    gap: spacing.xs,
-  },
-  legalIntro: {
-    color: colors.textMuted,
-    fontSize: typography.tiny,
-    textAlign: "center",
-  },
   legalLinks: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
   },
   legalLink: {

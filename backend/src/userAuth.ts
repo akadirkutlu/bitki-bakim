@@ -41,6 +41,59 @@ type SocialLinkInput = {
   name: string;
 };
 
+export function isPlaceholderDisplayName(name: string, email?: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length < 2) {
+    return true;
+  }
+
+  if (trimmed === "Apple User" || trimmed === "Google User" || trimmed === "Guest") {
+    return true;
+  }
+
+  if (!email) {
+    return false;
+  }
+
+  const at = email.indexOf("@");
+  if (at < 0) {
+    return false;
+  }
+
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1).toLowerCase();
+  if (
+    (domain.endsWith("privaterelay.appleid.com") || domain === "privaterelay.local") &&
+    trimmed.toLowerCase() === local.toLowerCase()
+  ) {
+    return true;
+  }
+
+  if (local.startsWith("apple-") && trimmed.toLowerCase() === local.toLowerCase()) {
+    return true;
+  }
+
+  return false;
+}
+
+function shouldReplaceDisplayName(current: string, next: string, email?: string): boolean {
+  const trimmedNext = next.trim();
+  if (!trimmedNext) {
+    return false;
+  }
+
+  const trimmedCurrent = current.trim();
+  if (trimmedCurrent.length < 2) {
+    return !isPlaceholderDisplayName(trimmedNext, email) || trimmedNext === "Apple User";
+  }
+
+  if (isPlaceholderDisplayName(trimmedCurrent, email)) {
+    return !isPlaceholderDisplayName(trimmedNext, email) || trimmedNext === "Apple User";
+  }
+
+  return false;
+}
+
 export function upsertSocialUser(
   users: User[],
   input: SocialLinkInput,
@@ -48,8 +101,8 @@ export function upsertSocialUser(
 ): User {
   const byProvider = findUserByProviderId(users, input.provider, input.providerId);
   if (byProvider) {
-    if (input.name && byProvider.name.length < 2) {
-      byProvider.name = input.name;
+    if (shouldReplaceDisplayName(byProvider.name, input.name, byProvider.email)) {
+      byProvider.name = input.name.trim();
     }
     return byProvider;
   }
@@ -62,8 +115,8 @@ export function upsertSocialUser(
       byEmail.appleId = input.providerId;
     }
 
-    if (input.name && byEmail.name.length < 2) {
-      byEmail.name = input.name;
+    if (shouldReplaceDisplayName(byEmail.name, input.name, byEmail.email)) {
+      byEmail.name = input.name.trim();
     }
 
     return byEmail;
@@ -74,8 +127,8 @@ export function upsertSocialUser(
   if (guestUser && guestUser.authProvider === "guest") {
     guestUser.email = input.email;
     guestUser.authProvider = input.provider;
-    if (input.name) {
-      guestUser.name = input.name;
+    if (input.name && !isPlaceholderDisplayName(input.name, input.email)) {
+      guestUser.name = input.name.trim();
     }
     if (input.provider === "google") {
       guestUser.googleId = input.providerId;
