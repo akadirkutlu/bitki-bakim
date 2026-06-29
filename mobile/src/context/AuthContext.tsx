@@ -1,7 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import {
+  deleteAccount as apiDeleteAccount,
   login as apiLogin,
+  loginAsGuest as apiLoginAsGuest,
   loginWithApple as apiLoginWithApple,
   loginWithGoogle as apiLoginWithGoogle,
   register as apiRegister,
@@ -30,9 +32,11 @@ type AuthContextValue = {
       familyName?: string;
     };
   }) => Promise<void>;
+  loginAsGuest: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   updateUser: (user: User) => Promise<void>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -85,38 +89,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
+  const value = useMemo<AuthContextValue>(() => {
+    // When the current session is an anonymous guest, pass its token so the
+    // backend converts that guest account into a real one (preserving plants).
+    const guestUpgradeToken =
+      user?.authProvider === "guest" && token ? token : undefined;
+
+    async function persistSession(response: { token: string; user: User }) {
+      setToken(response.token);
+      setUser(response.user);
+      await AsyncStorage.setItem(TOKEN_KEY, response.token);
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+    }
+
+    async function clearSession() {
+      setToken(null);
+      setUser(null);
+      await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    }
+
+    return {
       token,
       user,
       loading,
       login: async (payload) => {
-        const response = await apiLogin(payload);
-        setToken(response.token);
-        setUser(response.user);
-        await AsyncStorage.setItem(TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        await persistSession(await apiLogin(payload));
       },
       register: async (payload) => {
-        const response = await apiRegister(payload);
-        setToken(response.token);
-        setUser(response.user);
-        await AsyncStorage.setItem(TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        await persistSession(await apiRegister(payload, guestUpgradeToken));
       },
       loginWithGoogle: async (idToken) => {
-        const response = await apiLoginWithGoogle(idToken);
-        setToken(response.token);
-        setUser(response.user);
-        await AsyncStorage.setItem(TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        await persistSession(await apiLoginWithGoogle(idToken, guestUpgradeToken));
       },
       loginWithApple: async (payload) => {
-        const response = await apiLoginWithApple(payload);
-        setToken(response.token);
-        setUser(response.user);
-        await AsyncStorage.setItem(TOKEN_KEY, response.token);
-        await AsyncStorage.setItem(USER_KEY, JSON.stringify(response.user));
+        await persistSession(await apiLoginWithApple(payload, guestUpgradeToken));
+      },
+      loginAsGuest: async () => {
+        await persistSession(await apiLoginAsGuest());
+      },
+      deleteAccount: async () => {
+        if (token) {
+          await apiDeleteAccount(token);
+        }
+        await clearSession();
       },
       refreshUser: async () => {
         if (!token) {
@@ -132,14 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem(USER_KEY, JSON.stringify(nextUser));
       },
       logout: async () => {
-        setToken(null);
-        setUser(null);
-        await AsyncStorage.removeItem(TOKEN_KEY);
-        await AsyncStorage.removeItem(USER_KEY);
+        await clearSession();
       },
-    }),
-    [loading, token, user]
-  );
+    };
+  }, [loading, token, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

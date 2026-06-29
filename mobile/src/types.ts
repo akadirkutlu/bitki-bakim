@@ -3,7 +3,7 @@ export type User = {
   email: string;
   name: string;
   plan: "free" | "premium";
-  authProvider?: "email" | "google" | "apple";
+  authProvider?: "email" | "google" | "apple" | "guest";
 };
 
 export type PlantType = {

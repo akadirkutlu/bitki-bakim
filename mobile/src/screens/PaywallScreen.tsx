@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -21,6 +22,7 @@ import {
 } from "../services/subscriptions";
 import { colors, radii, spacing, typography } from "../theme";
 import { showErrorAlert, showMessageAlert } from "../utils/alerts";
+import { openPrivacyPolicy, openTermsOfUse } from "../utils/legal";
 
 type Props = {
   visible: boolean;
@@ -67,6 +69,7 @@ export function PaywallScreen({ visible, onClose, onSuccess }: Props) {
 
   const primaryProduct = products[0];
   const priceLabel = primaryProduct?.displayPrice ?? t("paywallPriceUnavailable");
+  const productTitle = primaryProduct?.title?.trim() || t("paywallProductTitle");
 
   async function handleSubscribe() {
     if (!token || !user) {
@@ -128,7 +131,11 @@ export function PaywallScreen({ visible, onClose, onSuccess }: Props) {
           </Pressable>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.contentScroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.iconWrap}>
             <Ionicons name="leaf" size={36} color={colors.leaf} />
           </View>
@@ -139,13 +146,28 @@ export function PaywallScreen({ visible, onClose, onSuccess }: Props) {
             <Text style={styles.benefit}>{t("paywallBenefitUnlimited")}</Text>
           </View>
 
-          <View style={styles.priceCard}>
+          <View style={styles.detailsCard}>
             {loadingProducts ? (
               <ActivityIndicator color={colors.leaf} />
             ) : (
               <>
-                <Text style={styles.price}>{priceLabel}</Text>
-                <Text style={styles.priceHint}>{t("paywallMonthlyHint")}</Text>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{t("paywallSubscriptionLabel")}</Text>
+                  <Text style={styles.detailValue}>{productTitle}</Text>
+                </View>
+                <View style={styles.detailDivider} />
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{t("paywallLengthLabel")}</Text>
+                  <Text style={styles.detailValue}>{t("paywallLengthValue")}</Text>
+                </View>
+                <View style={styles.detailDivider} />
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>{t("paywallPriceLabel")}</Text>
+                  <Text style={styles.detailValue}>
+                    {priceLabel}
+                    {primaryProduct ? ` ${t("paywallPerMonth")}` : ""}
+                  </Text>
+                </View>
               </>
             )}
           </View>
@@ -165,7 +187,19 @@ export function PaywallScreen({ visible, onClose, onSuccess }: Props) {
           <Pressable style={styles.secondaryButton} onPress={handleRestore} disabled={processing}>
             <Text style={styles.secondaryButtonText}>{t("paywallRestore")}</Text>
           </Pressable>
-        </View>
+
+          <Text style={styles.autoRenewNotice}>{t("paywallAutoRenewNotice")}</Text>
+
+          <View style={styles.legalLinks}>
+            <Pressable onPress={openTermsOfUse} hitSlop={8}>
+              <Text style={styles.legalLink}>{t("termsOfUse")}</Text>
+            </Pressable>
+            <Text style={styles.legalDot}>·</Text>
+            <Pressable onPress={openPrivacyPolicy} hitSlop={8}>
+              <Text style={styles.legalLink}>{t("privacyPolicy")}</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </Modal>
   );
@@ -191,10 +225,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  content: {
+  contentScroll: {
     flex: 1,
+  },
+  content: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
   iconWrap: {
@@ -231,25 +268,60 @@ const styles = StyleSheet.create({
     color: colors.textDark,
     fontWeight: "600",
   },
-  priceCard: {
+  detailsCard: {
     backgroundColor: colors.sunYellowLight,
     borderRadius: radii.lg,
     borderWidth: 1.5,
     borderColor: colors.sunYellow,
-    padding: spacing.xl,
-    alignItems: "center",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
     minHeight: 96,
     justifyContent: "center",
   },
-  price: {
-    fontSize: typography.title,
-    fontWeight: "800",
-    color: colors.textDark,
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+    gap: spacing.md,
   },
-  priceHint: {
-    marginTop: spacing.xs,
+  detailLabel: {
     fontSize: typography.small,
     color: colors.textMuted,
+    fontWeight: "600",
+  },
+  detailValue: {
+    fontSize: typography.body,
+    color: colors.textDark,
+    fontWeight: "800",
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: colors.sunYellow,
+    opacity: 0.6,
+  },
+  autoRenewNotice: {
+    fontSize: typography.tiny,
+    lineHeight: 16,
+    color: colors.textMuted,
+    textAlign: "center",
+  },
+  legalLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  legalLink: {
+    color: colors.leafDark,
+    fontSize: typography.small,
+    fontWeight: "700",
+  },
+  legalDot: {
+    color: colors.textMuted,
+    fontSize: typography.small,
   },
   primaryButton: {
     backgroundColor: colors.leaf,

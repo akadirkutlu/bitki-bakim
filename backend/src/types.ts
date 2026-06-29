@@ -1,6 +1,6 @@
 export type PlanType = "free" | "premium";
 
-export type AuthProvider = "email" | "google" | "apple";
+export type AuthProvider = "email" | "google" | "apple" | "guest";
 
 export type User = {
   id: string;

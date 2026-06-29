@@ -61,3 +61,15 @@ export const API_BASE_URL =
 export const PREMIUM_PRODUCT_IDS = [
   process.env.EXPO_PUBLIC_PREMIUM_PRODUCT_ID?.trim() || "com.bitkibakim.app.premium.monthly",
 ];
+
+const LEGAL_BASE_URL =
+  process.env.EXPO_PUBLIC_LEGAL_BASE_URL?.trim() ||
+  "https://akadirkutlu.github.io/bitki-bakim";
+
+export const PRIVACY_POLICY_URL =
+  process.env.EXPO_PUBLIC_PRIVACY_POLICY_URL?.trim() || `${LEGAL_BASE_URL}/privacy.html`;
+
+export const TERMS_OF_USE_URL =
+  process.env.EXPO_PUBLIC_TERMS_OF_USE_URL?.trim() || `${LEGAL_BASE_URL}/terms.html`;
+
+export const MANAGE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";

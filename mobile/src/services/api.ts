@@ -12,13 +12,33 @@ export type AuthResponse = {
   user: User;
 };
 
-export async function register(payload: {
-  name: string;
-  email: string;
-  password: string;
-}): Promise<AuthResponse> {
-  const { data } = await client.post<AuthResponse>("/auth/register", payload);
+function upgradeConfig(upgradeToken?: string) {
+  return upgradeToken ? { headers: authHeaders(upgradeToken) } : undefined;
+}
+
+export async function register(
+  payload: {
+    name: string;
+    email: string;
+    password: string;
+  },
+  upgradeToken?: string
+): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>(
+    "/auth/register",
+    payload,
+    upgradeConfig(upgradeToken)
+  );
   return data;
+}
+
+export async function loginAsGuest(): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>("/auth/guest", {});
+  return data;
+}
+
+export async function deleteAccount(token: string): Promise<void> {
+  await client.delete("/account", { headers: authHeaders(token) });
 }
 
 export async function login(payload: {
@@ -29,19 +49,33 @@ export async function login(payload: {
   return data;
 }
 
-export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
-  const { data } = await client.post<AuthResponse>("/auth/google", { idToken });
+export async function loginWithGoogle(
+  idToken: string,
+  upgradeToken?: string
+): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>(
+    "/auth/google",
+    { idToken },
+    upgradeConfig(upgradeToken)
+  );
   return data;
 }
 
-export async function loginWithApple(payload: {
-  identityToken: string;
-  fullName?: {
-    givenName?: string;
-    familyName?: string;
-  };
-}): Promise<AuthResponse> {
-  const { data } = await client.post<AuthResponse>("/auth/apple", payload);
+export async function loginWithApple(
+  payload: {
+    identityToken: string;
+    fullName?: {
+      givenName?: string;
+      familyName?: string;
+    };
+  },
+  upgradeToken?: string
+): Promise<AuthResponse> {
+  const { data } = await client.post<AuthResponse>(
+    "/auth/apple",
+    payload,
+    upgradeConfig(upgradeToken)
+  );
   return data;
 }
 

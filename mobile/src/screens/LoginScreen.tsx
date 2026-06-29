@@ -25,10 +25,16 @@ import {
 } from "../services/socialAuth";
 import { colors, radii, shadow, spacing, typography } from "../theme";
 import { showErrorAlert, showMessageAlert } from "../utils/alerts";
+import { openPrivacyPolicy, openTermsOfUse } from "../utils/legal";
 
-export function LoginScreen() {
+type Props = {
+  /** When provided, the screen renders as a modal (guest upgrade) with a close button. */
+  onClose?: () => void;
+};
+
+export function LoginScreen({ onClose }: Props = {}) {
   const { t } = useI18n();
-  const { login, register, loginWithGoogle, loginWithApple } = useAuth();
+  const { login, register, loginWithGoogle, loginWithApple, loginAsGuest } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -37,6 +43,9 @@ export function LoginScreen() {
 
   const showAppleButton = isAppleSignInAvailable();
   const showSocialSection = true;
+  // In guest-upgrade mode (rendered from the Account screen) there is no point
+  // offering "continue as guest" again.
+  const showGuestOption = !onClose;
 
   async function onSubmit() {
     const trimmedName = name.trim();
@@ -117,6 +126,17 @@ export function LoginScreen() {
     }
   }
 
+  async function onGuestPress() {
+    setLoading(true);
+    try {
+      await loginAsGuest();
+    } catch (error) {
+      showErrorAlert(t, extractApiMessage(error, t("unexpectedError")));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <LinearGradient
       colors={[colors.leafPale, colors.cream, colors.cream]}
@@ -131,6 +151,18 @@ export function LoginScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.topBar}>
+            {onClose ? (
+              <Pressable
+                onPress={onClose}
+                disabled={loading}
+                style={styles.closeButton}
+                accessibilityLabel={t("cancel")}
+              >
+                <Ionicons name="close" size={20} color={colors.textDark} />
+              </Pressable>
+            ) : (
+              <View />
+            )}
             <LanguageToggle />
           </View>
 
@@ -240,6 +272,33 @@ export function LoginScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {showGuestOption ? (
+            <Pressable
+              onPress={onGuestPress}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.guestButton,
+                pressed ? styles.pressed : null,
+                loading ? styles.disabled : null,
+              ]}
+            >
+              <Text style={styles.guestButtonText}>{t("continueAsGuest")}</Text>
+            </Pressable>
+          ) : null}
+
+          <View style={styles.legalRow}>
+            <Text style={styles.legalIntro}>{t("legalAgreementIntro")}</Text>
+            <View style={styles.legalLinks}>
+              <Pressable onPress={openTermsOfUse} hitSlop={8}>
+                <Text style={styles.legalLink}>{t("termsOfUse")}</Text>
+              </Pressable>
+              <Text style={styles.legalDot}>·</Text>
+              <Pressable onPress={openPrivacyPolicy} hitSlop={8}>
+                <Text style={styles.legalLink}>{t("privacyPolicy")}</Text>
+              </Pressable>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
@@ -260,8 +319,19 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: spacing.sm,
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.pill,
+    backgroundColor: colors.white,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   hero: {
     width: "100%",
@@ -360,6 +430,42 @@ const styles = StyleSheet.create({
     color: colors.terracotta,
     fontWeight: "600",
     marginTop: spacing.xs,
+  },
+  guestButton: {
+    marginTop: spacing.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.md,
+  },
+  guestButtonText: {
+    color: colors.leafDark,
+    fontWeight: "700",
+    fontSize: typography.body,
+    textDecorationLine: "underline",
+  },
+  legalRow: {
+    marginTop: spacing.lg,
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  legalIntro: {
+    color: colors.textMuted,
+    fontSize: typography.tiny,
+    textAlign: "center",
+  },
+  legalLinks: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  legalLink: {
+    color: colors.leafDark,
+    fontSize: typography.small,
+    fontWeight: "700",
+  },
+  legalDot: {
+    color: colors.textMuted,
+    fontSize: typography.small,
   },
   pressed: {
     opacity: 0.85,

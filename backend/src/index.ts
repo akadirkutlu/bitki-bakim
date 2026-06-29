@@ -3,7 +3,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { z, type ZodError } from "zod";
-import { authMiddleware, type AuthenticatedRequest, signToken } from "./auth";
+import {
+  authMiddleware,
+  getOptionalUserId,
+  type AuthenticatedRequest,
+  signToken,
+} from "./auth";
 import {
   isAppleConfigured,
   shouldDowngradeFromNotification,
@@ -84,6 +89,28 @@ app.post("/auth/register", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
+
+  // If the request carries a valid guest session token, convert that guest
+  // account in place so plants added while browsing are preserved.
+  const guestId = getOptionalUserId(req);
+  const guest = guestId
+    ? db.users.find((item) => item.id === guestId && item.authProvider === "guest")
+    : undefined;
+
+  if (guest) {
+    guest.email = email;
+    guest.name = name;
+    guest.passwordHash = passwordHash;
+    guest.authProvider = "email";
+    await writeDb(db);
+
+    res.status(201).json({
+      token: signToken(guest.id),
+      user: toPublicUser(guest),
+    });
+    return;
+  }
+
   const user = {
     id: crypto.randomUUID(),
     email,
@@ -91,6 +118,27 @@ app.post("/auth/register", async (req, res) => {
     name,
     plan: "free" as const,
     authProvider: "email" as const,
+    createdAt: new Date().toISOString(),
+  };
+
+  db.users.push(user);
+  await writeDb(db);
+
+  res.status(201).json({
+    token: signToken(user.id),
+    user: toPublicUser(user),
+  });
+});
+
+app.post("/auth/guest", async (_req, res) => {
+  const db = await readDb();
+  const id = crypto.randomUUID();
+  const user = {
+    id,
+    email: `guest_${id}@guest.bitkibakim`,
+    name: "Guest",
+    plan: "free" as const,
+    authProvider: "guest" as const,
     createdAt: new Date().toISOString(),
   };
 
@@ -162,12 +210,20 @@ app.post("/auth/google", async (req, res) => {
   try {
     const profile = await verifyGoogleIdToken(parseResult.data.idToken);
     const db = await readDb();
-    const user = upsertSocialUser(db.users, {
-      provider: "google",
-      providerId: profile.googleId,
-      email: profile.email,
-      name: profile.name,
-    });
+    const guestId = getOptionalUserId(req);
+    const guest = guestId
+      ? db.users.find((item) => item.id === guestId && item.authProvider === "guest")
+      : undefined;
+    const user = upsertSocialUser(
+      db.users,
+      {
+        provider: "google",
+        providerId: profile.googleId,
+        email: profile.email,
+        name: profile.name,
+      },
+      guest
+    );
 
     await writeDb(db);
 
@@ -209,12 +265,20 @@ app.post("/auth/apple", async (req, res) => {
       .trim();
 
     const db = await readDb();
-    const user = upsertSocialUser(db.users, {
-      provider: "apple",
-      providerId: profile.appleId,
-      email: profile.email,
-      name: composedName || profile.name,
-    });
+    const guestId = getOptionalUserId(req);
+    const guest = guestId
+      ? db.users.find((item) => item.id === guestId && item.authProvider === "guest")
+      : undefined;
+    const user = upsertSocialUser(
+      db.users,
+      {
+        provider: "apple",
+        providerId: profile.appleId,
+        email: profile.email,
+        name: composedName || profile.name,
+      },
+      guest
+    );
 
     await writeDb(db);
 
@@ -240,6 +304,23 @@ app.get("/auth/me", authMiddleware, async (req, res) => {
   }
 
   res.json({ user: toPublicUser(user) });
+});
+
+app.delete("/account", authMiddleware, async (req, res) => {
+  const userId = (req as AuthenticatedRequest).userId;
+  const db = await readDb();
+  const userIndex = db.users.findIndex((item) => item.id === userId);
+
+  if (userIndex === -1) {
+    res.status(404).json({ message: "User not found" });
+    return;
+  }
+
+  db.users.splice(userIndex, 1);
+  db.plants = db.plants.filter((plant) => plant.userId !== userId);
+  await writeDb(db);
+
+  res.status(204).send();
 });
 
 const verifyAppleSubscriptionSchema = z.object({

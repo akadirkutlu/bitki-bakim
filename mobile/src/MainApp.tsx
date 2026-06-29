@@ -15,6 +15,7 @@ import { TabBar, type TabKey } from "./components/TabBar";
 import { useAuth } from "./context/AuthContext";
 import { useI18n } from "./localization/I18nContext";
 import { preloadPlantImages } from "./plantImages";
+import { AccountScreen } from "./screens/AccountScreen";
 import { AddPlantScreen } from "./screens/AddPlantScreen";
 import { CalendarScreen } from "./screens/CalendarScreen";
 import { HomeScreen } from "./screens/HomeScreen";
@@ -44,10 +45,11 @@ function hiddenTabStyle(active: boolean) {
 
 export function MainApp() {
   const { t } = useI18n();
-  const { token, logout, refreshUser, updateUser, user } = useAuth();
+  const { token, refreshUser, updateUser, user } = useAuth();
   const [tab, setTab] = useState<TabKey>("home");
   const [loading, setLoading] = useState(true);
   const [paywallVisible, setPaywallVisible] = useState(false);
+  const [accountVisible, setAccountVisible] = useState(false);
   const [plants, setPlants] = useState<Plant[]>([]);
   const [plantTypes, setPlantTypes] = useState<PlantType[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -169,8 +171,12 @@ export function MainApp() {
         </View>
         <View style={styles.headerActions}>
           <LanguageToggle />
-          <Pressable style={styles.headerButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color={colors.textDark} />
+          <Pressable
+            style={styles.headerButton}
+            onPress={() => setAccountVisible(true)}
+            accessibilityLabel={t("account")}
+          >
+            <Ionicons name="person-circle-outline" size={20} color={colors.textDark} />
           </Pressable>
         </View>
       </View>
@@ -211,6 +217,10 @@ export function MainApp() {
         onSuccess={() => {
           refreshUser().catch(() => undefined);
         }}
+      />
+      <AccountScreen
+        visible={accountVisible}
+        onClose={() => setAccountVisible(false)}
       />
       <StatusBar style="dark" />
     </SafeAreaView>

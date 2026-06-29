@@ -11,6 +11,26 @@ export type AuthenticatedRequest = Request & {
   userId: string;
 };
 
+/**
+ * Best-effort extraction of the user id from the Authorization header.
+ * Returns null instead of throwing so it can be used on endpoints that are
+ * usable both anonymously and while a (guest) session token is present.
+ */
+export function getOptionalUserId(req: Request): string | null {
+  const token = req.header("authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return payload.userId;
+  } catch {
+    return null;
+  }
+}
+
 export function authMiddleware(
   req: Request,
   res: Response,

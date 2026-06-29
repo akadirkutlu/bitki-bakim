@@ -41,7 +41,11 @@ type SocialLinkInput = {
   name: string;
 };
 
-export function upsertSocialUser(users: User[], input: SocialLinkInput): User {
+export function upsertSocialUser(
+  users: User[],
+  input: SocialLinkInput,
+  guestUser?: User
+): User {
   const byProvider = findUserByProviderId(users, input.provider, input.providerId);
   if (byProvider) {
     if (input.name && byProvider.name.length < 2) {
@@ -63,6 +67,22 @@ export function upsertSocialUser(users: User[], input: SocialLinkInput): User {
     }
 
     return byEmail;
+  }
+
+  // Convert an existing guest session into a real account in place so the
+  // user keeps the plants they created while browsing without an account.
+  if (guestUser && guestUser.authProvider === "guest") {
+    guestUser.email = input.email;
+    guestUser.authProvider = input.provider;
+    if (input.name) {
+      guestUser.name = input.name;
+    }
+    if (input.provider === "google") {
+      guestUser.googleId = input.providerId;
+    } else {
+      guestUser.appleId = input.providerId;
+    }
+    return guestUser;
   }
 
   const user: User = {
@@ -88,6 +108,10 @@ export function socialProviderLabel(provider: AuthProvider): string {
 
   if (provider === "apple") {
     return "Apple";
+  }
+
+  if (provider === "guest") {
+    return "guest";
   }
 
   return "email and password";
