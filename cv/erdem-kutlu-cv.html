@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Erdem Kutlu — Özgeçmiş</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #16324f;
+    --navy-dark: #0e2338;
+    --accent: #2e86ab;
+    --accent-light: #e8f1f7;
+    --text: #2b2b2b;
+    --muted: #6b7684;
+    --line: #d8dee6;
+    --placeholder: #b3873a;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page { size: A4; margin: 0; }
+
+  html, body {
+    font-family: 'Source Sans 3', 'Segoe UI', -apple-system, sans-serif;
+    color: var(--text);
+    font-size: 10pt;
+    line-height: 1.35;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 55%, #1d4568 100%);
+    color: #fff;
+    padding: 7mm 14mm 5.5mm 14mm;
+  }
+  header .name {
+    font-size: 26pt;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    line-height: 1.1;
+  }
+  header .title {
+    font-size: 12pt;
+    font-weight: 400;
+    color: #bcd4e6;
+    margin-top: 2mm;
+    letter-spacing: 0.3px;
+  }
+  header .contact-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.5mm 8mm;
+    margin-top: 3.5mm;
+    padding-top: 3mm;
+    border-top: 1px solid rgba(255,255,255,0.25);
+    font-size: 9pt;
+    color: #dbe7f0;
+  }
+  header .contact-row span { white-space: nowrap; }
+  header .contact-row .lbl { color: #8fb3cc; font-weight: 600; margin-right: 1.5mm; }
+
+  header .head-top { display: flex; align-items: center; gap: 8mm; }
+  header .head-text { flex: 1; }
+  .photo {
+    width: 26mm;
+    height: 26mm;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: top;
+    border: 1.2mm solid rgba(255,255,255,0.85);
+    background: #fff;
+    flex-shrink: 0;
+  }
+
+  .ph { color: var(--placeholder); font-style: italic; }
+  header .ph { color: #f0c987; }
+
+  /* ---------- Body layout ---------- */
+  .body {
+    display: flex;
+    flex: 1;
+  }
+  .main {
+    width: 68%;
+    padding: 6.5mm 8mm 8mm 14mm;
+  }
+  .side {
+    width: 32%;
+    background: var(--accent-light);
+    padding: 6.5mm 10mm 8mm 8mm;
+    border-left: 1px solid var(--line);
+  }
+
+  /* ---------- Sections ---------- */
+  h2 {
+    font-size: 11pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--navy);
+    margin-bottom: 3mm;
+    padding-bottom: 1.5mm;
+    border-bottom: 2px solid var(--accent);
+  }
+  section { margin-bottom: 4mm; page-break-inside: avoid; }
+  section:last-child { margin-bottom: 0; }
+
+  .summary { text-align: justify; color: #3a4552; }
+
+  /* ---------- Experience ---------- */
+  .job { margin-bottom: 3mm; page-break-inside: avoid; }
+  .job:last-child { margin-bottom: 0; }
+  .job-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .job-title { font-weight: 700; font-size: 10.8pt; color: var(--navy-dark); }
+  .job-date {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    background: var(--accent-light);
+    padding: 0.5mm 2.5mm;
+    border-radius: 3px;
+  }
+  .side .job-date { background: #fff; }
+  .job-org { font-size: 9.5pt; color: var(--muted); font-weight: 600; margin-bottom: 1mm; }
+  ul { list-style: none; margin-top: 1mm; }
+  ul li {
+    position: relative;
+    padding-left: 4.5mm;
+    margin-bottom: 0.7mm;
+  }
+  ul li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2.1mm;
+    width: 1.8mm;
+    height: 1.8mm;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* ---------- Sidebar ---------- */
+  .side h2 { border-bottom-color: var(--navy); }
+  .info-item { margin-bottom: 2.5mm; }
+  .info-item .k { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); }
+  .info-item .v { font-size: 9.8pt; color: var(--text); }
+
+  .skill { margin-bottom: 2.2mm; padding-left: 4.5mm; position: relative; font-size: 9.6pt; }
+  .skill::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2mm;
+    width: 1.8mm;
+    height: 1.8mm;
+    background: var(--navy);
+    border-radius: 50%;
+  }
+
+  .edu { margin-bottom: 3.5mm; }
+  .edu .school { font-weight: 700; font-size: 9.8pt; color: var(--navy-dark); }
+  .edu .dept { font-size: 9.2pt; color: var(--text); }
+  .edu .yrs { font-size: 8.5pt; font-weight: 700; color: var(--accent); }
+
+  .award { margin-bottom: 2.5mm; padding-left: 4.5mm; position: relative; font-size: 9.6pt; }
+  .award::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 2mm;
+    width: 1.8mm;
+    height: 1.8mm;
+    background: var(--navy);
+    border-radius: 50%;
+  }
+  .award .src { color: var(--muted); font-size: 8.6pt; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="head-top">
+      <div class="head-text">
+        <div class="name">ERDEM KUTLU</div>
+        <div class="title">Aktüel Kameraman &amp; Drone Operatörü — TRT İç Yapımlar Dairesi Başkanlığı</div>
+      </div>
+      <img class="photo" src="foto.jpg" alt="" onerror="this.style.display='none'">
+    </div>
+    <div class="contact-row">
+      <span><span class="lbl">Doğum Tarihi</span>24.06.1986</span>
+      <span><span class="lbl">Adres</span>Üsküdar / İstanbul</span>
+      <span><span class="lbl">Telefon</span>0533 359 10 87</span>
+      <span><span class="lbl">E-posta</span>erdem.kutlu@trt.net.tr</span>
+    </div>
+  </header>
+
+  <div class="body">
+    <div class="main">
+
+      <section>
+        <h2>Profil</h2>
+        <p class="summary">
+          2009 yılından bu yana TRT bünyesinde görev yapan, yayıncılık sektöründe 17 yıla yaklaşan
+          deneyime sahip bir medya profesyoneliyim. TRT Çocuk kanalında büro hizmetleri, komisyon
+          sekreteryası ve uluslararası organizasyon yönetimi alanlarında edindiğim idari tecrübeyi,
+          2016 yılından itibaren İç Yapımlar Dairesi Başkanlığı Prodüksiyon Kaynakları Müdürlüğü'nde
+          aktüel kameramanlık ve drone operatörlüğü ile sahada üretim tecrübesiyle birleştirdim.
+          Belgesel yapımlarından canlı yayınlara uzanan geniş bir yelpazede görev alarak hem yapım
+          süreçlerine hem de prodüksiyon kaynaklarının yönetimine hâkim, kurum kültürünü ve iş
+          akışlarını yakından tanıyan bir bakış açısı kazandım.
+        </p>
+      </section>
+
+      <section>
+        <h2>İş Deneyimi</h2>
+
+        <div class="job">
+          <div class="job-head">
+            <div class="job-title">Aktüel Kameraman / Drone Operatörü</div>
+            <div class="job-date">2016 — Günümüz</div>
+          </div>
+          <div class="job-org">TRT — İç Yapımlar Dairesi Başkanlığı, Prodüksiyon Kaynakları Müdürlüğü</div>
+          <ul>
+            <li>Aktüel Kamera Servisi'nde aktüel kameraman olarak görev yapıyorum.</li>
+            <li>Aktüel kamera envanterinde bulunan tüm kamera sistemlerini aktif olarak kullanıyorum.</li>
+            <li>Drone (İHA) operatörlüğü ile havadan çekim hizmetleri sağlıyorum.</li>
+            <li>İç Yapımlar bünyesinde gerçekleştirilen çok sayıda belgesel program ve canlı yayında görev aldım.</li>
+            <li>Demirbaş görevlisi olarak birim envanterinin takibi ve yönetiminden sorumluyum.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head">
+            <div class="job-title">Kanal Büro Hizmetleri &amp; Komisyon Sekreteryası</div>
+            <div class="job-date">2009 — 2016</div>
+          </div>
+          <div class="job-org">TRT — TRT Çocuk Kanal Koordinatörlüğü</div>
+          <ul>
+            <li>Kanal büro hizmetlerinin yürütülmesinde görev aldım.</li>
+            <li>Program Proje Değerlendirme Komisyonu sekreteryasını yürüttüm.</li>
+            <li>TRT Uluslararası 23 Nisan Çocuk Şenliği Yürütme Kurulu üyeliği yaptım; organizasyonun planlanması ve gerçekleştirilmesinde 4 yıl boyunca aktif görev aldım.</li>
+          </ul>
+        </div>
+
+        <div class="job">
+          <div class="job-head">
+            <div class="job-title">Genel Müdür Asistanı</div>
+            <div class="job-date">2007 — 2008</div>
+          </div>
+          <div class="job-org">Cisco</div>
+        </div>
+
+        <div class="job">
+          <div class="job-head">
+            <div class="job-title">Pazarlama</div>
+            <div class="job-date">2005 — 2006</div>
+          </div>
+          <div class="job-org">Diyala Otomotiv</div>
+        </div>
+
+        <div class="job">
+          <div class="job-head">
+            <div class="job-title">Pazarlama</div>
+            <div class="job-date">2004 — 2005</div>
+          </div>
+          <div class="job-org">Muş Hırdavat</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Ödül ve Belgeler</h2>
+        <div class="award">2 adet Takdirname <span class="src">— TRT Genel Müdürlüğü</span></div>
+        <div class="award">1 adet Teşekkür Belgesi <span class="src">— TRT Genel Müdürlüğü</span></div>
+      </section>
+
+    </div>
+
+    <div class="side">
+
+      <section>
+        <h2>Eğitim</h2>
+        <div class="edu">
+          <div class="school">İstanbul Üniversitesi</div>
+          <div class="dept">Halkla İlişkiler ve Tanıtım — Lisans Tamamlama</div>
+          <div class="yrs">2019 — 2021</div>
+        </div>
+        <div class="edu">
+          <div class="school">İstanbul Aydın Üniversitesi</div>
+          <div class="dept">Halkla İlişkiler ve Tanıtım — Önlisans</div>
+          <div class="yrs">2011 — 2013</div>
+        </div>
+        <div class="edu">
+          <div class="school">Hacı Sabancı Anadolu Lisesi</div>
+          <div class="yrs">2003 — 2006</div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Uzmanlık Alanları</h2>
+        <div class="skill">Aktüel kamera çekimi (tüm envanter kameraları)</div>
+        <div class="skill">Drone (İHA) operatörlüğü ve havadan çekim</div>
+        <div class="skill">Belgesel prodüksiyonu</div>
+        <div class="skill">Canlı yayın operasyonları</div>
+        <div class="skill">Demirbaş ve envanter yönetimi</div>
+        <div class="skill">Etkinlik ve organizasyon yönetimi</div>
+        <div class="skill">Komisyon ve kurul sekreteryası</div>
+        <div class="skill">Kurumsal iletişim ve halkla ilişkiler</div>
+      </section>
+
+      <section>
+        <h2>Sertifikalar</h2>
+        <div class="skill">İHA-1 İnsansız Hava Aracı Pilot Belgesi</div>
+      </section>
+
+      <section>
+        <h2>Kişisel Bilgiler</h2>
+        <div class="info-item">
+          <div class="k">Sürücü Belgesi</div>
+          <div class="v">B Sınıfı</div>
+        </div>
+        <div class="info-item">
+          <div class="k">Askerlik Durumu</div>
+          <div class="v">Tamamlandı</div>
+        </div>
+        <div class="info-item">
+          <div class="k">Yabancı Dil</div>
+          <div class="v">İngilizce — Orta Düzey</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
